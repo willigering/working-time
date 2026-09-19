@@ -1,0 +1,78 @@
+================================================================================
+  RELEASE NOTES / VERSIONSHINWEISE
+  App:        Working Time
+  Entwickler: Willi Gering
+  Stand:      2026-09-05
+================================================================================
+
+Aktuelle Version: 2.5.9 (Build 34) - 2026-09-06
+
+v2.5.9 (Build 34) - 2026-09-06
+- Lösch-Balken zeigt „Wiederherstellen“ und stellt per Tippen wieder her
+
+v2.5.8 (Build 33) - 2026-09-05
+- Rückgängig per Wischen funktioniert wieder
+- Hinweistext „5 Sekunden zum Rückgängig“ entfernt
+
+v2.5.7 (Build 32) - 2026-09-05
+- Projekt löschen: Option per Tippen auswählen, Löschen und Abbrechen im selben Dialog
+- Nach dem Löschen 5 Sekunden zum Rückgängig machen durch Wischen
+
+v2.5.6 (Build 31) - 2026-09-05
+- Projekt löschen in zwei Schritten: erst Einträge behalten / Alles löschen wählen, dann mit „Jetzt löschen“ bestätigen
+
+v2.5.5 (Build 30) - 2026-09-05
+- Verlauf: vor dem Löschen eines Eintrags erscheint eine Bestätigung
+- Projekt löschen: klare, volle Buttons für „Einträge behalten“ und „Alles löschen“
+- Lösch-Dialoge ohne bräunlichen Material-Ton, mit Warn-Icon und Abbrechen-Button
+
+v2.5.4 (Build 29) - 2026-08-15
+- Kunden-Dropdown: nach einer Auswahl bleiben alle Kunden wählbar
+
+v2.5.3 (Build 28) - 2026-08-15
+- Kunden-Dropdown: sichtbare Trennlinien, abwechselnde Zeilenfarben, Icon und Haken für die Auswahl
+
+v2.5.2 (Build 27) - 2026-08-15
+- Analog-Uhr bleibt beim Swipen sichtbar (kein Ausblenden/Neuaufbau mehr)
+
+v2.5.1 (Build 26) - 2026-08-15
+- Timer-Tab nicht mehr scrollbar
+- Analog-Uhr dezenter und nur so groß wie der freie Platz zwischen Button und Statistik
+
+v2.5.0 (Build 25) - 2026-08-15
+- Kunden in der Datenbank: beim Projekt anlegen speichern und aus Dropdown wählen
+- Kunden-Tab unter Projekte (anlegen, umbenennen, löschen)
+- Design: Dark Productivity / Premium Stopwatch
+- Analog-Uhr größer, mit Ziffern und Glow
+- Start-Button Anthrazit, Stop-Button Orange
+
+v2.4.5 (Build 24) - 2026-08-04
+- targetSdk / compileSdk auf API 36 (Android 16) angehoben
+
+v2.4.4 (Build 23) - 2026-08-04
+- Verlauf: kaputte Sonderzeichen behoben (En-Dash und Mittelpunkt)
+- Release-Build neu erzeugt
+
+v2.4.3 (Build 22) - 2026-07-28
+- Animierte Uhr ohne Bildrahmen und ohne Zoom-Animation
+
+v2.4.2 (Build 21) - 2026-07-28
+- QR-Codes im Support-Bereich entfernt
+- Kompakte Krypto-Karten (Name, Adresse, Kopieren)
+
+v2.4.1 / v2.4.0
+- PayPal aktiv (paypal.me/willigeringDE)
+- Support the Project (Stats): Krypto + PayPal
+
+v2.3.x
+- Profil-Tab (Name, Firma, Logo)
+- PDF/Excel mit User-Name und Logo
+
+v2.2.0
+- Export: CSV, Excel, PDF-Stundennachweis, PDF-Monatsbericht mit Filtern
+
+v2.1.x / v2.0.x
+- Freelancer-Zeiterfassung: Timer, Projekte, Verlauf, Stats
+- Package de.willigering.workingtime, Release-Signierung
+
+--- Ende ---
