@@ -2,6 +2,8 @@
 
 Premium Freelancer-Zeiterfassung für Android – dunkles UI mit animiertem Uhren-Hintergrund.
 
+**Entwickler:** Willi Gering
+
 ## Funktionen
 
 ### Timer
@@ -34,19 +36,8 @@ Premium Freelancer-Zeiterfassung für Android – dunkles UI mit animiertem Uhre
 ## APK bauen
 
 ```powershell
-cd C:\Users\wital\ArbeitszeitTracker
-.\gradlew assembleDebug
-```
-
-APK: `app\build\outputs\apk\debug\app-debug.apk`
-
-Release:
-```powershell
+cd "D:\APP DEV GROK\Working-Time"
 .\gradlew assembleRelease
 ```
 
----
-
-**Entwickler:** Willi Gering
-
-v2.0.0 – Upgrade von ArbeitszeitTracker mit Compose-UI & Freelancer-Features
+APK: `app\build\outputs\apk\de\release\app-de-release.apk`
