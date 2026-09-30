@@ -80,6 +80,7 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var turns by remember { mutableStateOf(0) }
     var crop by remember { mutableStateOf(false) }
+    var previewFailed by remember { mutableStateOf(false) }
 
     val logoBitmap by produceState<ImageBitmap?>(null, profile.logoPath, logoVersion) {
         value = withContext(Dispatchers.IO) {
@@ -91,10 +92,12 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
     }
     val preview by produceState<ImageBitmap?>(null, pendingUri, turns, crop) {
         value = null
+        previewFailed = false
         value = withContext(Dispatchers.IO) {
             try { pendingUri?.let { LogoImages.decode(context, it, 512, turns, crop)?.asImageBitmap() } }
             catch (_: Exception) { null } catch (_: OutOfMemoryError) { null }
         }
+        previewFailed = pendingUri != null && value == null
     }
 
     val pickLogo = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -110,7 +113,7 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
                     val image = preview
                     if (image != null) Image(image, stringResource(R.string.profile_logo_title),
                         Modifier.fillMaxSize().padding(12.dp), contentScale = ContentScale.Fit)
-                    else Text(stringResource(R.string.logo_loading), color = Color.DarkGray)
+                    else Text(stringResource(if (previewFailed) R.string.profile_logo_failed else R.string.logo_loading), color = Color.DarkGray)
                 }
                 TextButton(enabled = !busy, onClick = { turns = (turns + 1) % 4 }) {
                     Text(stringResource(R.string.logo_rotate))

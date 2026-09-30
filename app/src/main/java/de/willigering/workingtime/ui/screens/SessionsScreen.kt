@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -103,7 +104,7 @@ fun SessionsScreen(viewModel: TimeTrackerViewModel) {
 
         OutlinedTextField(value = query, onValueChange = { query = it }, singleLine = true,
             label = { Text(stringResource(R.string.search_sessions)) }, modifier = Modifier.fillMaxWidth())
-        Row {
+        FlowRow {
             TextButton(onClick = { pickDate(from) { from = ExportBuilder.startOfDay(it) } }) {
                 Text(stringResource(R.string.export_from) + (from?.let { ": " + Formatters.date(it) } ?: ""))
             }
@@ -203,7 +204,7 @@ private fun SessionItem(
     val clientName = viewModel.sessionClientName(session)
     val rate = viewModel.sessionRate(session)
     val color = Color(viewModel.sessionColor(session))
-    val mins = (session.end - session.start) / 60_000
+    val mins = de.willigering.workingtime.util.TimeMath.minutes(session.start, session.end)
     val earnings = viewModel.sessionEarnings(session)
 
     GlassCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit), accentColor = color) {
@@ -253,6 +254,9 @@ private fun SessionItem(
                 if (session.notes.isNotBlank()) {
                     Text(session.notes, color = AppColors.TextMuted)
                 }
+            }
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.edit_session), tint = AppColors.Accent)
             }
             IconButton(onClick = onDelete) {
                 Icon(

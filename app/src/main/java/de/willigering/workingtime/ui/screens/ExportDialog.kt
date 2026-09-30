@@ -42,6 +42,7 @@ import de.willigering.workingtime.export.ExportShare
 import de.willigering.workingtime.ui.components.SeparatedDropdownItems
 import de.willigering.workingtime.ui.theme.AppColors
 import de.willigering.workingtime.util.Formatters
+import de.willigering.workingtime.data.Project
 import de.willigering.workingtime.viewmodel.TimeTrackerViewModel
 import java.util.Calendar
 import kotlinx.coroutines.launch
@@ -63,8 +64,13 @@ fun ExportDialog(
     var periodFrom by remember { mutableStateOf(month.first) }
     var periodTo by remember { mutableStateOf(month.second) }
 
+    val exportProjects = remember(state.projects, state.sessions) {
+        state.projects + state.sessions.distinctBy { it.projectId }
+            .filter { session -> state.projects.none { it.id == session.projectId } }
+            .map { session -> Project(id = session.projectId, name = viewModel.sessionProjectName(session)) }
+    }
     var projectId by remember {
-        mutableStateOf(state.projects.firstOrNull()?.id ?: state.selectedProjectId)
+        mutableStateOf(exportProjects.firstOrNull()?.id ?: state.selectedProjectId)
     }
     val clients = remember(state.clients, state.projects, state.sessions) {
         viewModel.uniqueClientNames(includeArchived = true)
@@ -130,7 +136,7 @@ fun ExportDialog(
                         }
                     }
                     ExportScope.PROJECT -> {
-                        val selectedName = state.projects.find { it.id == projectId }?.name
+                        val selectedName = exportProjects.find { it.id == projectId }?.name
                             ?: stringResource(R.string.export_pick_project)
                         ExposedDropdownMenuBox(
                             expanded = projectMenuOpen,
@@ -151,8 +157,8 @@ fun ExportDialog(
                                 onDismissRequest = { projectMenuOpen = false },
                             ) {
                                 SeparatedDropdownItems(
-                                    items = state.projects,
-                                    selected = state.projects.find { it.id == projectId },
+                                    items = exportProjects,
+                                    selected = exportProjects.find { it.id == projectId },
                                     label = { it.name },
                                     leadingIcon = Icons.Rounded.Folder,
                                     onSelect = {
