@@ -1,6 +1,9 @@
 package de.willigering.workingtime.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,24 +65,31 @@ fun TimerScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val tick by viewModel.tick.collectAsState()
-    var notes by remember { mutableStateOf("") }
     var showCreateProject by remember { mutableStateOf(false) }
 
     val active = state.activeSession
-    val elapsed = if (active != null) tick - active.start else 0L
+    val elapsed = if (active != null) (tick - active.start).coerceAtLeast(0L) else 0L
     val activeProject = active?.let { viewModel.projectById(it.projectId) }
         ?: state.selectedProjectId?.let { viewModel.projectById(it) }
 
     val (todayStart, todayEnd) = viewModel.todayRange()
     val (weekStart, weekEnd) = viewModel.weekRange()
     val (monthStart, monthEnd) = viewModel.monthRange()
-    val todayMins = viewModel.totalMinutes(state.sessions, todayStart, todayEnd)
-    val weekMins = viewModel.totalMinutes(state.sessions, weekStart, weekEnd)
-    val monthMins = viewModel.totalMinutes(state.sessions, monthStart, monthEnd)
+    val completed = remember(state.sessions, todayStart, weekStart, monthStart) {
+        Triple(
+            viewModel.totalMinutes(state.sessions, todayStart, todayEnd),
+            viewModel.totalMinutes(state.sessions, weekStart, weekEnd),
+            viewModel.totalMinutes(state.sessions, monthStart, monthEnd),
+        )
+    }
+    val todayMins = completed.first + if (active != null) de.willigering.workingtime.util.TimeMath.minutes(maxOf(active.start, todayStart), minOf(tick, todayEnd)) else 0
+    val weekMins = completed.second + if (active != null) de.willigering.workingtime.util.TimeMath.minutes(maxOf(active.start, weekStart), tick) else 0
+    val monthMins = completed.third + if (active != null) de.willigering.workingtime.util.TimeMath.minutes(maxOf(active.start, monthStart), tick) else 0
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -140,8 +150,8 @@ fun TimerScreen(
             }
         } else {
             OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
+                value = active.notes,
+                onValueChange = { viewModel.updateActiveNotes(it) },
                 label = { Text(stringResource(R.string.timer_note_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -157,8 +167,7 @@ fun TimerScreen(
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
-                    viewModel.stopSession(notes)
-                    notes = ""
+                    viewModel.stopSession()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -179,7 +188,7 @@ fun TimerScreen(
 
         Box(
             modifier = Modifier
-                .weight(1f)
+                .height(160.dp)
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center,
@@ -218,7 +227,7 @@ private fun HeroTimer(elapsed: Long) {
     val labelStyle = MaterialTheme.typography.labelMedium.copy(
         color = AppColors.TextMuted,
         letterSpacing = 1.6.sp,
-        fontSize = 10.sp,
+        fontSize = 12.sp,
     )
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -299,7 +308,7 @@ private fun MiniStat(label: String, value: String) {
             label.uppercase(),
             style = MaterialTheme.typography.labelMedium,
             color = AppColors.TextMuted,
-            fontSize = 9.sp,
+            fontSize = 12.sp,
             letterSpacing = 1.1.sp,
         )
         Spacer(Modifier.height(4.dp))

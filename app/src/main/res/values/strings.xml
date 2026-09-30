@@ -22,7 +22,7 @@
     <string name="create_new_project">Create new project</string>
     <string name="switch_project">Switch project</string>
     <string name="delete_project_title">Delete project?</string>
-    <string name="delete_project_message">Really delete “%1$s”? Tap an option, then Delete or Cancel.</string>
+    <string name="delete_project_message">Really delete “%1$s”? Tap an option, then Delete or Cancel. If entries are kept, a running session is stopped and saved.</string>
     <string name="delete_project_keep_entries">Keep entries</string>
     <string name="delete_project_keep_hint">Remove the project only, times stay</string>
     <string name="delete_project_and_entries">Delete everything</string>
@@ -140,7 +140,7 @@
     <string name="client_project_count">%1$d projects</string>
     <string name="client_project_count_one">1 project</string>
     <string name="delete_client_title">Delete client?</string>
-    <string name="delete_client_message">“%1$s” will be removed from the client list. Projects stay unchanged.</string>
+    <string name="delete_client_message">Remove client %1$s from the selection? Historical entries are kept.</string>
     <string name="projects_empty_title">No projects yet</string>
     <string name="projects_empty_more_title">No further projects</string>
     <string name="projects_empty_hint">Create a project to start tracking your working time.</string>
@@ -193,4 +193,19 @@
     <string name="currency_value">%1$.2f €</string>
 
     <string name="csv_header">Date;Project;Client;Start;End;Duration (Min);Hourly rate;Earnings (EUR);Notes</string>
+    <string name="invalid_rate">Enter a valid hourly rate (e.g. 25.50).</string>
+    <string name="project_color_label">Project color %1$d</string>
+    <string name="minute_policy">Duration and earnings use completed minutes. Statistics include running sessions.</string>
+    <string name="storage_failed">Some data could not be loaded or saved. Keep the app open and back up existing files.</string>
+    <string name="add_session">Add time entry</string>
+    <string name="edit_session">Edit time entry</string>
+    <string name="invalid_session_time">End must be after start.</string>
+    <string name="search_sessions">Search project, client or note</string>
+    <string name="reset_filters">Reset</string>
+    <string name="logo_preview">Adjust logo</string>
+    <string name="logo_loading">Loading preview …</string>
+    <string name="logo_rotate">Rotate 90°</string>
+    <string name="logo_crop">Crop to a centered square</string>
+    <string name="logo_white_hint">Light background as in the PDF. A white logo on a transparent background will be invisible here.</string>
+    <string name="logo_export_preview">Export header preview</string>
 </resources>

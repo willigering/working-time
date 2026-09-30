@@ -3,6 +3,9 @@ package de.willigering.workingtime.ui
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -60,6 +63,7 @@ fun WorkingTimeApp(viewModel: TimeTrackerViewModel = viewModel()) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
     val undo by viewModel.undoBanner.collectAsState()
+    val appState by viewModel.state.collectAsState()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -89,7 +93,7 @@ fun WorkingTimeApp(viewModel: TimeTrackerViewModel = viewModel()) {
                         label = {
                             Text(
                                 label,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
                                 letterSpacing = 0.1.sp,
                             )
@@ -112,6 +116,12 @@ fun WorkingTimeApp(viewModel: TimeTrackerViewModel = viewModel()) {
                 .background(AppColors.Background)
                 .padding(padding),
         ) {
+            Column {
+            if (appState.storageError) Text(
+                stringResource(R.string.storage_failed), color = AppColors.Error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+            )
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
@@ -125,6 +135,7 @@ fun WorkingTimeApp(viewModel: TimeTrackerViewModel = viewModel()) {
                     3 -> ProfileScreen(viewModel)
                     4 -> StatsScreen(viewModel)
                 }
+            }
             }
             undo?.let { banner ->
                 SwipeUndoBanner(

@@ -1,6 +1,16 @@
 package de.willigering.workingtime.ui.screens
 
 import androidx.compose.foundation.Canvas
+import android.app.DatePickerDialog
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
+import java.util.Calendar
+import de.willigering.workingtime.export.ExportBuilder
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,9 +50,32 @@ import de.willigering.workingtime.ui.theme.AppColors
 import de.willigering.workingtime.util.Formatters
 import de.willigering.workingtime.viewmodel.TimeTrackerViewModel
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SessionsScreen(viewModel: TimeTrackerViewModel) {
     val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
+    var query by rememberSaveable { mutableStateOf("") }
+    var projectFilter by rememberSaveable { mutableStateOf<String?>(null) }
+    var from by rememberSaveable { mutableStateOf<Long?>(null) }
+    var to by rememberSaveable { mutableStateOf<Long?>(null) }
+    var editing by remember { mutableStateOf<WorkSession?>(null) }
+    var showEdit by remember { mutableStateOf(false) }
+    val visible = remember(state.sessions, state.projects, query, projectFilter, from, to) {
+        state.sessions.filter { session ->
+            (projectFilter == null || session.projectId == projectFilter) &&
+            (from == null || session.end > from!!) && (to == null || session.start <= to!!) &&
+            listOf(viewModel.sessionProjectName(session), viewModel.sessionClientName(session), session.notes)
+                .any { it.contains(query.trim(), ignoreCase = true) }
+        }.sortedByDescending { it.start }
+    }
+    fun pickDate(current: Long?, select: (Long) -> Unit) {
+        val cal = Calendar.getInstance().apply { if (current != null) timeInMillis = current }
+        DatePickerDialog(context, { _, y, m, d ->
+            val date = Calendar.getInstance().apply { set(y, m, d, 0, 0, 0); set(Calendar.MILLISECOND, 0) }
+            select(date.timeInMillis)
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+    }
     var showExport by remember { mutableStateOf(false) }
     var sessionPendingDelete by remember { mutableStateOf<WorkSession?>(null) }
 
@@ -68,6 +101,22 @@ fun SessionsScreen(viewModel: TimeTrackerViewModel) {
         }
         Spacer(Modifier.height(12.dp))
 
+        OutlinedTextField(value = query, onValueChange = { query = it }, singleLine = true,
+            label = { Text(stringResource(R.string.search_sessions)) }, modifier = Modifier.fillMaxWidth())
+        Row {
+            TextButton(onClick = { pickDate(from) { from = ExportBuilder.startOfDay(it) } }) {
+                Text(stringResource(R.string.export_from) + (from?.let { ": " + Formatters.date(it) } ?: ""))
+            }
+            TextButton(onClick = { pickDate(to) { to = ExportBuilder.endOfDay(it) } }) {
+                Text(stringResource(R.string.export_to) + (to?.let { ": " + Formatters.date(it) } ?: ""))
+            }
+            TextButton(onClick = { from = null; to = null; projectFilter = null; query = "" }) {
+                Text(stringResource(R.string.reset_filters))
+            }
+        }
+        OutlinedButton(onClick = { editing = null; showEdit = true }, enabled = state.projects.isNotEmpty()) {
+            Text(stringResource(R.string.add_session))
+        }
         if (state.sessions.isEmpty()) {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.sessions_empty_title), style = MaterialTheme.typography.titleMedium)
@@ -79,17 +128,37 @@ fun SessionsScreen(viewModel: TimeTrackerViewModel) {
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(state.sessions, key = { it.id }) { session ->
+                item {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilterChip(selected = projectFilter == null, onClick = { projectFilter = null },
+                            label = { Text(stringResource(R.string.export_scope_all)) })
+                        state.sessions.distinctBy { it.projectId }.forEach { sample ->
+                            FilterChip(selected = projectFilter == sample.projectId,
+                                onClick = { projectFilter = sample.projectId },
+                                label = { Text(viewModel.sessionProjectName(sample)) })
+                        }
+                    }
+                }
+                if (visible.isEmpty()) item { Text(stringResource(R.string.export_empty)) }
+                visible.groupBy { Formatters.date(it.start) }.forEach { (date, entries) ->
+                item { Text(date, style = MaterialTheme.typography.titleSmall) }
+                items(entries, key = { it.id }) { session ->
                     SessionItem(
                         session = session,
                         viewModel = viewModel,
                         onDelete = { sessionPendingDelete = session },
+                        onEdit = { editing = session; showEdit = true },
                     )
+                }
                 }
                 item { Spacer(Modifier.height(80.dp)) }
             }
         }
     }
+
+    if (showEdit) SessionDialog(editing, state.projects,
+        onDismiss = { showEdit = false },
+        onSave = { viewModel.saveSession(it); showEdit = false })
 
     if (showExport) {
         ExportDialog(
@@ -127,6 +196,7 @@ private fun SessionItem(
     session: WorkSession,
     viewModel: TimeTrackerViewModel,
     onDelete: () -> Unit,
+    onEdit: () -> Unit,
 ) {
     val context = LocalContext.current
     val projectName = viewModel.sessionProjectName(session)
@@ -136,7 +206,7 @@ private fun SessionItem(
     val mins = (session.end - session.start) / 60_000
     val earnings = viewModel.sessionEarnings(session)
 
-    GlassCard(modifier = Modifier.fillMaxWidth(), accentColor = color) {
+    GlassCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onEdit), accentColor = color) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -166,7 +236,7 @@ private fun SessionItem(
                 )
                 Text(
                     // en-dash via escape (avoids UTF-8 mojibake in source)
-                    "${Formatters.time(session.start)} \u2013 ${Formatters.time(session.end)}",
+                    "${Formatters.time(session.start)} \u2013 ${if (Formatters.date(session.start) != Formatters.date(session.end)) Formatters.date(session.end) + " " else ""}${Formatters.time(session.end)}",
                     color = AppColors.TextSecondary,
                 )
                 val meta = buildString {

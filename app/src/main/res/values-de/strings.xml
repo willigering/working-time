@@ -22,7 +22,7 @@
     <string name="create_new_project">Neues Projekt erstellen</string>
     <string name="switch_project">Projekt wechseln</string>
     <string name="delete_project_title">Projekt löschen?</string>
-    <string name="delete_project_message">„%1$s“ wirklich löschen? Tippe eine Option an, dann Löschen oder Abbrechen.</string>
+    <string name="delete_project_message">„%1$s“ wirklich löschen? Tippe eine Option an, dann Löschen oder Abbrechen. Eine laufende Zeit wird beim Behalten der Einträge beendet und gespeichert.</string>
     <string name="delete_project_keep_entries">Einträge behalten</string>
     <string name="delete_project_keep_hint">Nur das Projekt entfernen, Zeiten bleiben</string>
     <string name="delete_project_and_entries">Alles löschen</string>
@@ -140,7 +140,7 @@
     <string name="client_project_count">%1$d Projekte</string>
     <string name="client_project_count_one">1 Projekt</string>
     <string name="delete_client_title">Kunde löschen?</string>
-    <string name="delete_client_message">„%1$s“ wird aus der Kundenliste entfernt. Projekte bleiben erhalten.</string>
+    <string name="delete_client_message">Kunde %1$s aus der Auswahl entfernen? Alte Einträge bleiben erhalten.</string>
     <string name="projects_empty_title">Noch keine Projekte</string>
     <string name="projects_empty_more_title">Noch keine weiteren Projekte</string>
     <string name="projects_empty_hint">Erstelle ein Projekt, um deine Arbeitszeit zu erfassen.</string>
@@ -193,4 +193,19 @@
     <string name="currency_value">%1$.2f €</string>
 
     <string name="csv_header">Datum;Projekt;Kunde;Start;Ende;Dauer (Min);Stundensatz;Verdienst (EUR);Notizen</string>
+    <string name="invalid_rate">Bitte einen gültigen Stundensatz eingeben (z. B. 25,50).</string>
+    <string name="project_color_label">Projektfarbe %1$d</string>
+    <string name="minute_policy">Dauer und Verdienst werden aus vollständigen Minuten berechnet. Laufende Zeiten sind in den Statistiken enthalten.</string>
+    <string name="storage_failed">Daten konnten nicht vollständig geladen oder gespeichert werden. Bitte die App geöffnet lassen und vorhandene Dateien sichern.</string>
+    <string name="add_session">Zeit nachtragen</string>
+    <string name="edit_session">Zeiteintrag bearbeiten</string>
+    <string name="invalid_session_time">Das Ende muss nach dem Beginn liegen.</string>
+    <string name="search_sessions">Projekt, Kunde oder Notiz suchen</string>
+    <string name="reset_filters">Zurücksetzen</string>
+    <string name="logo_preview">Logo anpassen</string>
+    <string name="logo_loading">Vorschau wird geladen …</string>
+    <string name="logo_rotate">Um 90° drehen</string>
+    <string name="logo_crop">Mittig quadratisch zuschneiden</string>
+    <string name="logo_white_hint">Heller Hintergrund wie im PDF. Ein weißes Logo auf transparentem Hintergrund ist hier nicht sichtbar.</string>
+    <string name="logo_export_preview">Vorschau des Exportkopfs</string>
 </resources>

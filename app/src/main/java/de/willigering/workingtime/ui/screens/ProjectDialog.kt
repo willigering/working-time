@@ -4,6 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import de.willigering.workingtime.util.TimeMath
+import java.util.Locale
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,7 +52,7 @@ import de.willigering.workingtime.data.TimeTrackerRepository
 import de.willigering.workingtime.ui.components.SeparatedDropdownItems
 import de.willigering.workingtime.ui.theme.AppColors
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ProjectDialog(
     project: Project?,
@@ -54,7 +63,7 @@ fun ProjectDialog(
     var name by remember(project) { mutableStateOf(project?.name ?: "") }
     var client by remember(project) { mutableStateOf(project?.clientName ?: "") }
     var rateText by remember(project) {
-        mutableStateOf(if (project != null && project.hourlyRate > 0) project.hourlyRate.toString() else "")
+        mutableStateOf(if (project != null && project.hourlyRate > 0) String.format(Locale.getDefault(), "%.2f", project.hourlyRate) else "")
     }
     var billable by remember(project) { mutableStateOf(project?.billable ?: true) }
     var selectedColor by remember(project) {
@@ -72,6 +81,7 @@ fun ProjectDialog(
         }
     }
 
+    val parsedRate = TimeMath.parseRate(rateText)
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = AppColors.Surface,
@@ -149,10 +159,10 @@ fun ProjectDialog(
                 }
                 OutlinedTextField(
                     value = rateText,
-                    onValueChange = {
-                        rateText = it.filter { c -> c.isDigit() || c == '.' || c == ',' }
-                            .replace(',', '.')
-                    },
+                    onValueChange = { rateText = it },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = parsedRate == null,
+                    supportingText = { if (parsedRate == null) Text(stringResource(R.string.invalid_rate)) },
                     label = { Text(stringResource(R.string.hourly_rate)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -180,12 +190,13 @@ fun ProjectDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = AppColors.TextMuted,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (c in TimeTrackerRepository.PROJECT_COLORS) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((index, c) in TimeTrackerRepository.PROJECT_COLORS.withIndex()) {
+                        val colorLabel = stringResource(R.string.project_color_label, index + 1)
                         val col = Color(c)
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
+                                .size(48.dp)
                                 .clip(CircleShape)
                                 .background(col)
                                 .border(
@@ -193,6 +204,7 @@ fun ProjectDialog(
                                     if (selectedColor == c) Color.White else Color.Transparent,
                                     CircleShape,
                                 )
+                                .semantics { contentDescription = colorLabel; selected = selectedColor == c }
                                 .clickable { selectedColor = c },
                         )
                     }
@@ -202,10 +214,10 @@ fun ProjectDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val rate = rateText.toDoubleOrNull() ?: 0.0
+                    val rate = parsedRate ?: return@Button
                     if (name.isNotBlank()) onSave(name, client, rate, selectedColor, billable)
                 },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank() && parsedRate != null,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AppColors.Accent,
                     contentColor = AppColors.Background,

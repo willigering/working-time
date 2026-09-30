@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import de.willigering.workingtime.data.WorkSession
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,20 +47,32 @@ private data class ProjectStats(
 fun StatsScreen(viewModel: TimeTrackerViewModel) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val tick by viewModel.tick.collectAsState()
+    val minute = tick / 60_000
+    val sessions = remember(state.sessions, state.activeSession, state.projects, minute) {
+        val active = state.activeSession
+        val project = active?.let { viewModel.projectById(it.projectId) }
+        if (active == null) state.sessions else state.sessions + WorkSession(
+            id = "running", projectId = active.projectId, projectName = project?.name.orEmpty(),
+            hourlyRate = project?.hourlyRate ?: 0.0, billable = project?.billable ?: false,
+            colorArgb = project?.colorArgb ?: 0xFFFFB300,
+            start = active.start, end = tick, notes = active.notes,
+        )
+    }
 
     val (todayStart, todayEnd) = viewModel.todayRange()
     val (weekStart, weekEnd) = viewModel.weekRange()
     val (monthStart, monthEnd) = viewModel.monthRange()
 
-    val todayMins = viewModel.totalMinutes(state.sessions, todayStart, todayEnd)
-    val weekMins = viewModel.totalMinutes(state.sessions, weekStart, weekEnd)
-    val monthMins = viewModel.totalMinutes(state.sessions, monthStart, monthEnd)
-    val todayEarn = viewModel.totalEarnings(state.sessions, todayStart, todayEnd)
-    val weekEarn = viewModel.totalEarnings(state.sessions, weekStart, weekEnd)
-    val monthEarn = viewModel.totalEarnings(state.sessions, monthStart, monthEnd)
+    val todayMins = viewModel.totalMinutes(sessions, todayStart, todayEnd)
+    val weekMins = viewModel.totalMinutes(sessions, weekStart, weekEnd)
+    val monthMins = viewModel.totalMinutes(sessions, monthStart, monthEnd)
+    val todayEarn = viewModel.totalEarnings(sessions, todayStart, todayEnd)
+    val weekEarn = viewModel.totalEarnings(sessions, weekStart, weekEnd)
+    val monthEarn = viewModel.totalEarnings(sessions, monthStart, monthEnd)
 
-    val projectStats = remember(state.sessions, state.projects) {
-        state.sessions
+    val projectStats = remember(sessions, state.projects, monthStart, monthEnd / 60_000) {
+        sessions
             .groupBy { it.projectId }
             .mapNotNull { (_, sessions) ->
                 val minutes = viewModel.totalMinutes(sessions, monthStart, monthEnd)

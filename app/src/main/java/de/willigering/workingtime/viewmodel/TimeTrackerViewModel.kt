@@ -49,6 +49,7 @@ class TimeTrackerViewModel(application: Application) : AndroidViewModel(applicat
     private val repository = TimeTrackerRepository(application.applicationContext)
 
     private var undoSnapshot: AppState? = null
+    private var undoAfter: AppState? = null
     private var undoJob: Job? = null
     private val _undoBanner = MutableStateFlow<UndoBannerState?>(null)
     val undoBanner: StateFlow<UndoBannerState?> = _undoBanner.asStateFlow()
@@ -78,7 +79,11 @@ class TimeTrackerViewModel(application: Application) : AndroidViewModel(applicat
         repository.startSession(projectId)
     }
 
-    fun stopSession(notes: String = "") = repository.stopSession(notes)
+    fun stopSession(notes: String? = null) = repository.stopSession(notes)
+
+    fun updateActiveNotes(notes: String) = repository.updateActiveNotes(notes)
+    fun saveSession(session: WorkSession) = repository.saveSession(session)
+    suspend fun awaitWrites() = repository.awaitWrites()
 
     fun deleteSession(sessionId: String) =
         performWithUndo(UndoKind.Session) { repository.deleteSession(sessionId) }
@@ -110,7 +115,7 @@ class TimeTrackerViewModel(application: Application) : AndroidViewModel(applicat
 
     fun sessionColor(session: WorkSession) = repository.sessionColor(session)
 
-    fun uniqueClientNames(): List<String> = repository.uniqueClientNames()
+    fun uniqueClientNames(includeArchived: Boolean = false): List<String> = repository.uniqueClientNames(includeArchived)
 
     fun addClient(name: String) = repository.addClient(name)
 
@@ -121,17 +126,20 @@ class TimeTrackerViewModel(application: Application) : AndroidViewModel(applicat
 
     fun undoLastDelete() {
         val snap = undoSnapshot ?: return
+        val after = undoAfter ?: return
         undoJob?.cancel()
         undoJob = null
         undoSnapshot = null
         _undoBanner.value = null
-        repository.restoreState(snap)
+        repository.restoreDeleted(snap, after)
+        undoAfter = null
     }
 
     private fun performWithUndo(kind: UndoKind, action: () -> Unit) {
         undoJob?.cancel()
         undoSnapshot = repository.snapshot()
         action()
+        undoAfter = repository.snapshot()
         undoJob = viewModelScope.launch {
             var left = UNDO_MS
             _undoBanner.value = UndoBannerState(kind, left)
@@ -149,9 +157,10 @@ class TimeTrackerViewModel(application: Application) : AndroidViewModel(applicat
     fun updateUserProfile(displayName: String, companyName: String) =
         repository.updateUserProfile(displayName, companyName)
 
-    fun setUserLogoFromUri(uri: Uri): Boolean = repository.setUserLogoFromUri(uri)
+    suspend fun setUserLogoFromUri(uri: Uri, turns: Int = 0, crop: Boolean = false): Boolean =
+        withContext(Dispatchers.IO) { repository.setUserLogoFromUri(uri, turns, crop) }
 
-    fun clearUserLogo() = repository.clearUserLogo()
+    suspend fun clearUserLogo() = withContext(Dispatchers.IO) { repository.clearUserLogo() }
 
     fun buildExportSummary(context: Context, filter: ExportFilter): ExportSummary {
         val filtered = ExportBuilder.filterSessions(state.value.sessions, repository, filter)
@@ -166,7 +175,7 @@ class TimeTrackerViewModel(application: Application) : AndroidViewModel(applicat
         withContext(Dispatchers.IO) {
             val summary = buildExportSummary(context, filter)
             if (summary.rows.isEmpty()) return@withContext null
-            val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
+            val stamp = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date())
             val name = ExportShare.fileNameFor(filter.format, stamp, summary.title)
             val out = File(ExportShare.exportDir(context), name)
             when (filter.format) {

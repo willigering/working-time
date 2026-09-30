@@ -11,6 +11,10 @@ import org.json.JSONObject
 import java.io.File
 import java.util.Calendar
 import java.util.Locale
+import de.willigering.workingtime.util.TimeMath
+import android.util.AtomicFile
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 
 class TimeTrackerRepository(context: Context) {
 
@@ -28,9 +32,62 @@ class TimeTrackerRepository(context: Context) {
         )
     }
 
+    private val failedFiles = mutableSetOf<String>()
+    private val writes = Channel<() -> Unit>(Channel.UNLIMITED)
+    private val diskScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     init {
         load()
+        diskScope.launch {
+            for (write in writes) {
+                try { write() } catch (_: Exception) {
+                    _state.update { it.copy(storageError = true) }
+                }
+            }
+        }
     }
+
+    suspend fun awaitWrites() {
+        val done = CompletableDeferred<Unit>()
+        writes.send { done.complete(Unit) }
+        done.await()
+    }
+
+    private fun readStored(file: File): String =
+        AtomicFile(file).openRead().bufferedReader().use { it.readText() }
+
+    private fun writeStored(file: File, text: String) {
+        if (file.name in failedFiles) return
+        val atomic = AtomicFile(file)
+        val output = atomic.startWrite()
+        try {
+            output.write(text.toByteArray(Charsets.UTF_8))
+            atomic.finishWrite(output)
+        } catch (e: Exception) {
+            atomic.failWrite(output)
+            throw e
+        }
+    }
+
+    private fun enqueue(write: () -> Unit) {
+        if (writes.trySend(write).isFailure) _state.update { it.copy(storageError = true) }
+    }
+
+    fun updateActiveNotes(notes: String) {
+        _state.update { it.copy(activeSession = it.activeSession?.copy(notes = notes)) }
+        saveActive()
+    }
+
+    fun saveSession(session: WorkSession) {
+        require(session.end > session.start)
+        require(session.hourlyRate.isFinite() && session.hourlyRate >= 0)
+        _state.update { state ->
+            state.copy(sessions = (state.sessions.filterNot { it.id == session.id } + session)
+                .sortedByDescending { it.start })
+        }
+        saveSessions()
+    }
+
 
     fun projectById(id: String): Project? =
         _state.value.projects.find { it.id == id }
@@ -49,6 +106,7 @@ class TimeTrackerRepository(context: Context) {
     }
 
     fun startSession(projectId: String) {
+        if (projectById(projectId) == null) return
         if (_state.value.activeSession != null) return
         _state.update {
             it.copy(
@@ -62,7 +120,7 @@ class TimeTrackerRepository(context: Context) {
         saveActive()
     }
 
-    fun stopSession(notes: String = "") {
+    fun stopSession(notes: String? = null) {
         val active = _state.value.activeSession ?: return
         val project = projectById(active.projectId)
         val session = WorkSession(
@@ -73,8 +131,8 @@ class TimeTrackerRepository(context: Context) {
             colorArgb = project?.colorArgb ?: PROJECT_COLORS[0],
             billable = project?.billable ?: true,
             start = active.start,
-            end = System.currentTimeMillis(),
-            notes = notes.trim(),
+            end = maxOf(active.start, System.currentTimeMillis()),
+            notes = (notes ?: active.notes).trim(),
         )
         _state.update {
             it.copy(
@@ -98,6 +156,7 @@ class TimeTrackerRepository(context: Context) {
         colorArgb: Long,
         billable: Boolean,
     ) {
+        require(name.isNotBlank() && hourlyRate.isFinite() && hourlyRate >= 0.0)
         val trimmedClient = clientName.trim()
         ensureClient(trimmedClient)
         val project = Project(
@@ -115,6 +174,7 @@ class TimeTrackerRepository(context: Context) {
     }
 
     fun updateProject(project: Project) {
+        require(project.name.isNotBlank() && project.hourlyRate.isFinite() && project.hourlyRate >= 0.0)
         val trimmed = project.copy(clientName = project.clientName.trim())
         ensureClient(trimmed.clientName)
         _state.update {
@@ -123,11 +183,19 @@ class TimeTrackerRepository(context: Context) {
         saveProjects()
     }
 
-    fun addClient(name: String): Client? = ensureClient(name)
+    fun addClient(name: String): Client? {
+        val client = ensureClient(name) ?: return null
+        _state.update { state -> state.copy(clients = state.clients.map {
+            if (it.id == client.id) it.copy(archived = false) else it
+        }) }
+        saveClients()
+        return client.copy(archived = false)
+    }
 
     fun updateClient(client: Client) {
         val newName = client.name.trim()
         if (newName.isEmpty()) return
+        if (_state.value.clients.any { it.id != client.id && it.name.equals(newName, true) }) return
         val old = _state.value.clients.find { it.id == client.id } ?: run {
             ensureClient(newName)
             return
@@ -152,7 +220,7 @@ class TimeTrackerRepository(context: Context) {
     }
 
     fun deleteClient(clientId: String) {
-        _state.update { it.copy(clients = it.clients.filter { c -> c.id != clientId }) }
+        _state.update { it.copy(clients = it.clients.map { c -> if (c.id == clientId) c.copy(archived = true) else c }) }
         saveClients()
     }
 
@@ -181,15 +249,34 @@ class TimeTrackerRepository(context: Context) {
      */
     fun snapshot(): AppState = _state.value
 
-    fun restoreState(snapshot: AppState) {
-        _state.value = snapshot
-        saveProjects()
-        saveSessions()
-        saveActive()
-        saveClients()
+    /** Restore only deleted records; preserve all intervening edits and timer changes. */
+    fun restoreDeleted(before: AppState, after: AppState) {
+        val projects = before.projects.filter { old -> after.projects.none { it.id == old.id } }
+        val sessions = before.sessions.filter { old -> after.sessions.none { it.id == old.id } }
+        val clients = before.clients.filter { old ->
+            !old.archived && after.clients.any { it.id == old.id && it.archived }
+        }
+        _state.update { now ->
+            now.copy(
+                projects = now.projects + projects.filter { p -> now.projects.none { it.id == p.id } },
+                sessions = (now.sessions + sessions.filter { s -> now.sessions.none { it.id == s.id } })
+                    .sortedByDescending { it.start },
+                clients = now.clients.map { current ->
+                    clients.find { it.id == current.id }?.let { current.copy(archived = false) } ?: current
+                },
+                selectedProjectId = now.selectedProjectId ?: projects.firstOrNull()?.id,
+                activeSession = now.activeSession ?: before.activeSession?.takeIf {
+                    after.activeSession == null && now.sessions.none { s ->
+                        s.projectId == it.projectId && s.start == it.start
+                    }
+                },
+            )
+        }
+        saveProjects(); saveSessions(); saveActive(); saveClients()
     }
 
     fun deleteProject(projectId: String, deleteSessions: Boolean = false) {
+        if (!deleteSessions && _state.value.activeSession?.projectId == projectId) stopSession()
         val project = projectById(projectId)
         val remaining = _state.value.projects.filter { it.id != projectId }
         val fallbackId = remaining.firstOrNull()?.id
@@ -225,7 +312,7 @@ class TimeTrackerRepository(context: Context) {
         val rate = sessionRate(session)
         val billable = sessionBillable(session)
         if (!billable || rate <= 0) return 0.0
-        val hours = (session.end - session.start) / 3_600_000.0
+        val hours = TimeMath.minutes(session.start, session.end) / 60.0
         return hours * rate
     }
 
@@ -270,7 +357,7 @@ class TimeTrackerRepository(context: Context) {
             if (s.end < fromMillis || s.start > toMillis) continue
             val start = maxOf(s.start, fromMillis)
             val end = minOf(s.end, toMillis)
-            total += (end - start) / 60_000
+            total += TimeMath.minutes(start, end)
         }
         return total
     }
@@ -283,31 +370,15 @@ class TimeTrackerRepository(context: Context) {
             if (!sessionBillable(s) || rate <= 0) continue
             val start = maxOf(s.start, fromMillis)
             val end = minOf(s.end, toMillis)
-            val hours = (end - start) / 3_600_000.0
+            val hours = TimeMath.minutes(start, end) / 60.0
             total += hours * rate
         }
         return total
     }
 
-    fun todayRange(): Pair<Long, Long> {
-        val cal = Calendar.getInstance()
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        val start = cal.timeInMillis
-        return start to start + 86_400_000
-    }
+    fun todayRange(): Pair<Long, Long> = TimeMath.dayRange()
 
-    fun weekRange(): Pair<Long, Long> {
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, -6)
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis to System.currentTimeMillis()
-    }
+    fun weekRange(): Pair<Long, Long> = TimeMath.weekRange()
 
     fun monthRange(): Pair<Long, Long> {
         val cal = Calendar.getInstance()
@@ -319,12 +390,13 @@ class TimeTrackerRepository(context: Context) {
         return cal.timeInMillis to System.currentTimeMillis()
     }
 
-    fun uniqueClientNames(): List<String> {
-        val fromClients = _state.value.clients.map { it.name.trim() }
+    fun uniqueClientNames(includeArchived: Boolean = false): List<String> {
+        val fromClients = _state.value.clients.filter { includeArchived || !it.archived }.map { it.name.trim() }
+        val archived = _state.value.clients.filter { it.archived }.map { it.name.lowercase(Locale.ROOT) }.toSet()
         val fromProjects = _state.value.projects.map { it.clientName.trim() }
         val fromSessions = _state.value.sessions.map { sessionClientName(it).trim() }
         return (fromClients + fromProjects + fromSessions)
-            .filter { it.isNotEmpty() }
+            .filter { it.isNotEmpty() && (includeArchived || it.lowercase(Locale.ROOT) !in archived) }
             .distinctBy { it.lowercase(Locale.getDefault()) }
             .sortedBy { it.lowercase(Locale.getDefault()) }
     }
@@ -345,61 +417,33 @@ class TimeTrackerRepository(context: Context) {
      * Copies/resizes the picked image into app storage as PNG and stores the path.
      * @return true if logo was saved successfully
      */
-    fun setUserLogoFromUri(uri: android.net.Uri): Boolean {
+    fun setUserLogoFromUri(uri: android.net.Uri, turns: Int = 0, crop: Boolean = false): Boolean {
+        val target = File(filesDir, "logo-" + java.util.UUID.randomUUID() + ".png")
         return try {
-            val resolver = appContext.contentResolver
-            val input = resolver.openInputStream(uri) ?: return false
-            val decodeOpts = android.graphics.BitmapFactory.Options().apply {
-                inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
-                inScaled = false
-            }
-            val original = android.graphics.BitmapFactory.decodeStream(input, null, decodeOpts)
-            input.close()
-            if (original == null) return false
-
-            // Keep enough pixels for sharp PDF rendering (~300 dpi at ~1" logo)
-            val maxSide = 2048
-            val w = original.width
-            val h = original.height
-            val scale = minOf(1f, maxSide.toFloat() / maxOf(w, h))
-            val tw = (w * scale).toInt().coerceAtLeast(1)
-            val th = (h * scale).toInt().coerceAtLeast(1)
-            val scaled = if (scale < 1f) {
-                android.graphics.Bitmap.createScaledBitmap(original, tw, th, true)
-            } else {
-                original
-            }
-            if (scaled !== original) original.recycle()
-
-            val outFile = File(filesDir, LOGO_FILE_NAME)
-            java.io.FileOutputStream(outFile).use { fos ->
-                scaled.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
-            }
-            scaled.recycle()
-
-            _state.update {
-                it.copy(userProfile = it.userProfile.copy(logoPath = outFile.absolutePath))
-            }
+            val bitmap = de.willigering.workingtime.util.LogoImages.decode(appContext, uri, 2048, turns, crop)
+                ?: return false
+            try {
+                java.io.FileOutputStream(target).use {
+                    check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+                    it.fd.sync()
+                }
+            } finally { bitmap.recycle() }
+            // Unique files keep the previous logo safe and avoid export/import races.
+            _state.update { it.copy(userProfile = it.userProfile.copy(logoPath = target.absolutePath)) }
             saveProfile()
             true
         } catch (_: Exception) {
+            target.delete()
+            false
+        } catch (_: OutOfMemoryError) {
+            target.delete()
             false
         }
     }
 
     fun clearUserLogo() {
-        val path = _state.value.userProfile.logoPath
-        if (path.isNotBlank()) {
-            try {
-                File(path).delete()
-            } catch (_: Exception) {
-            }
-        }
-        val defaultLogo = File(filesDir, LOGO_FILE_NAME)
-        if (defaultLogo.exists()) defaultLogo.delete()
-        _state.update {
-            it.copy(userProfile = it.userProfile.copy(logoPath = ""))
-        }
+        // Keep immutable image files for exports already in progress.
+        _state.update { it.copy(userProfile = it.userProfile.copy(logoPath = "")) }
         saveProfile()
     }
 
@@ -411,11 +455,11 @@ class TimeTrackerRepository(context: Context) {
     }
 
     private fun stampSessionFromProject(session: WorkSession, project: Project?): WorkSession {
-        if (project == null) {
+        if (session.projectName.isNotBlank() || project == null) {
             // Keep whatever snapshot already exists.
             return session
         }
-        // Always refresh snapshot from live project when project is deleted but entries stay.
+        // Stamp only legacy records without a snapshot.
         return session.copy(
             projectName = project.name,
             clientName = project.clientName,
@@ -430,7 +474,7 @@ class TimeTrackerRepository(context: Context) {
         val sessions = loadSessions(projects)
         val storedClients = loadClients()
         val clients = mergeClients(storedClients, projects, sessions)
-        val active = loadActive()
+        val active = loadActive()?.takeUnless { a -> sessions.any { it.projectId == a.projectId && it.start == a.start } }
         val profile = loadProfile()
         val activeProjectId = active?.projectId?.takeIf { id -> projects.any { it.id == id } }
         val selected = activeProjectId
@@ -442,6 +486,7 @@ class TimeTrackerRepository(context: Context) {
             activeSession = active,
             selectedProjectId = selected,
             userProfile = profile,
+            storageError = failedFiles.isNotEmpty(),
         )
         if (clients.size != storedClients.size) {
             saveClients()
@@ -451,13 +496,13 @@ class TimeTrackerRepository(context: Context) {
     private fun loadProfile(): UserProfile {
         val file = File(filesDir, "profile.json")
         val logoDefault = File(filesDir, LOGO_FILE_NAME)
-        if (!file.exists()) {
+        if (!file.exists() && !File(file.path + ".bak").exists()) {
             return UserProfile(
                 logoPath = if (logoDefault.exists()) logoDefault.absolutePath else "",
             )
         }
         return try {
-            val o = JSONObject(file.readText())
+            val o = JSONObject(readStored(file))
             val path = o.optString("logoPath", "")
             val logoPath = when {
                 path.isNotBlank() && File(path).exists() -> path
@@ -470,6 +515,7 @@ class TimeTrackerRepository(context: Context) {
                 logoPath = logoPath,
             )
         } catch (_: Exception) {
+            failedFiles += file.name
             UserProfile(
                 logoPath = if (logoDefault.exists()) logoDefault.absolutePath else "",
             )
@@ -478,23 +524,21 @@ class TimeTrackerRepository(context: Context) {
 
     private fun saveProfile() {
         val p = _state.value.userProfile
-        File(filesDir, "profile.json").writeText(
-            JSONObject()
-                .put("displayName", p.displayName)
-                .put("companyName", p.companyName)
-                .put("logoPath", p.logoPath)
-                .toString(),
-        )
+        enqueue {
+            writeStored(File(filesDir, "profile.json"), JSONObject()
+                .put("displayName", p.displayName).put("companyName", p.companyName)
+                .put("logoPath", p.logoPath).toString())
+        }
     }
 
     private fun loadProjects(): List<Project> {
         val file = File(filesDir, "projects.json")
-        if (!file.exists()) {
+        if (!file.exists() && !File(file.path + ".bak").exists()) {
             // Start empty — user creates the first project on the homescreen.
             return emptyList()
         }
         return try {
-            val arr = JSONArray(file.readText())
+            val arr = JSONArray(readStored(file))
             (0 until arr.length()).map { i ->
                 val o = arr.getJSONObject(i)
                 Project(
@@ -507,15 +551,16 @@ class TimeTrackerRepository(context: Context) {
                 )
             }
         } catch (_: Exception) {
+            failedFiles += file.name
             emptyList()
         }
     }
 
     private fun loadSessions(projects: List<Project>): List<WorkSession> {
         val file = File(filesDir, "sessions.json")
-        if (!file.exists()) return emptyList()
+        if (!file.exists() && !File(file.path + ".bak").exists()) return emptyList()
         return try {
-            val arr = JSONArray(file.readText())
+            val arr = JSONArray(readStored(file))
             val byId = projects.associateBy { it.id }
             (0 until arr.length()).map { i ->
                 val o = arr.getJSONObject(i)
@@ -556,17 +601,19 @@ class TimeTrackerRepository(context: Context) {
                 )
             }.sortedByDescending { it.start }
         } catch (_: Exception) {
+            failedFiles += file.name
             emptyList()
         }
     }
 
     private fun loadActive(): ActiveSession? {
         val jsonFile = File(filesDir, "active.json")
-        if (jsonFile.exists()) {
+        if (jsonFile.exists() || File(jsonFile.path + ".bak").exists()) {
             return try {
-                val o = JSONObject(jsonFile.readText())
-                ActiveSession(o.getLong("start"), o.getString("projectId"))
+                val o = JSONObject(readStored(jsonFile))
+                ActiveSession(o.getLong("start"), o.getString("projectId"), o.optString("notes", ""))
             } catch (_: Exception) {
+                if (jsonFile.length() > 0) failedFiles += jsonFile.name
                 null
             }
         }
@@ -584,9 +631,9 @@ class TimeTrackerRepository(context: Context) {
 
     private fun loadClients(): List<Client> {
         val file = File(filesDir, "clients.json")
-        if (!file.exists()) return emptyList()
+        if (!file.exists() && !File(file.path + ".bak").exists()) return emptyList()
         return try {
-            val arr = JSONArray(file.readText())
+            val arr = JSONArray(readStored(file))
             (0 until arr.length()).mapNotNull { i ->
                 val o = arr.getJSONObject(i)
                 val name = o.optString("name", "").trim()
@@ -594,9 +641,11 @@ class TimeTrackerRepository(context: Context) {
                 else Client(
                     id = o.optString("id", java.util.UUID.randomUUID().toString()),
                     name = name,
+                    archived = o.optBoolean("archived", false),
                 )
             }
         } catch (_: Exception) {
+            failedFiles += file.name
             emptyList()
         }
     }
@@ -624,53 +673,39 @@ class TimeTrackerRepository(context: Context) {
     }
 
     private fun saveClients() {
-        val arr = JSONArray()
-        for (c in _state.value.clients) {
-            arr.put(
-                JSONObject()
-                    .put("id", c.id)
-                    .put("name", c.name),
-            )
+        val clients = _state.value.clients
+        enqueue {
+            val arr = JSONArray()
+            for (c in clients) arr.put(JSONObject().put("id", c.id).put("name", c.name).put("archived", c.archived))
+            writeStored(File(filesDir, "clients.json"), arr.toString())
         }
-        File(filesDir, "clients.json").writeText(arr.toString())
     }
 
     private fun saveProjects() {
-        File(filesDir, "projects.json").writeText(projectsToJson(_state.value.projects).toString())
+        val projects = _state.value.projects
+        enqueue { writeStored(File(filesDir, "projects.json"), projectsToJson(projects).toString()) }
     }
 
     private fun saveSessions() {
-        val arr = JSONArray()
-        for (s in _state.value.sessions) {
-            arr.put(
-                JSONObject()
-                    .put("id", s.id)
-                    .put("projectId", s.projectId)
-                    .put("projectName", s.projectName)
-                    .put("clientName", s.clientName)
-                    .put("hourlyRate", s.hourlyRate)
-                    .put("colorArgb", s.colorArgb)
-                    .put("billable", s.billable)
-                    .put("start", s.start)
-                    .put("end", s.end)
-                    .put("notes", s.notes)
-            )
+        val sessions = _state.value.sessions
+        enqueue {
+            val arr = JSONArray()
+            for (s in sessions) arr.put(JSONObject()
+                .put("id", s.id).put("projectId", s.projectId).put("projectName", s.projectName)
+                .put("clientName", s.clientName).put("hourlyRate", s.hourlyRate)
+                .put("colorArgb", s.colorArgb).put("billable", s.billable)
+                .put("start", s.start).put("end", s.end).put("notes", s.notes))
+            writeStored(File(filesDir, "sessions.json"), arr.toString())
         }
-        File(filesDir, "sessions.json").writeText(arr.toString())
     }
 
     private fun saveActive() {
-        val file = File(filesDir, "active.json")
         val active = _state.value.activeSession
-        if (active == null) {
-            file.writeText("")
-        } else {
-            file.writeText(
-                JSONObject()
-                    .put("start", active.start)
-                    .put("projectId", active.projectId)
-                    .toString()
-            )
+        enqueue {
+            writeStored(File(filesDir, "active.json"), active?.let {
+                JSONObject().put("start", it.start).put("projectId", it.projectId)
+                    .put("notes", it.notes).toString()
+            }.orEmpty())
         }
     }
 

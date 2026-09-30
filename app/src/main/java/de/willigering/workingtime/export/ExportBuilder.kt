@@ -7,6 +7,7 @@ import de.willigering.workingtime.data.WorkSession
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import de.willigering.workingtime.util.TimeMath
 
 object ExportBuilder {
 
@@ -15,23 +16,24 @@ object ExportBuilder {
         repository: TimeTrackerRepository,
         filter: ExportFilter,
     ): List<WorkSession> {
-        return sessions.filter { s ->
+        return sessions.mapNotNull { s ->
             when (filter.scope) {
-                ExportScope.ALL -> true
+                ExportScope.ALL -> s
                 ExportScope.PERIOD -> {
-                    val from = filter.periodFrom ?: return@filter true
-                    val to = filter.periodTo ?: return@filter true
-                    s.start in from..to || s.end in from..to ||
-                        (s.start <= from && s.end >= to)
+                    val from = filter.periodFrom ?: return@mapNotNull null
+                    val to = filter.periodTo ?: return@mapNotNull null
+                    val start = maxOf(s.start, from)
+                    val end = minOf(s.end, to + 1)
+                    if (end <= start) null else s.copy(start = start, end = end)
                 }
                 ExportScope.PROJECT -> {
-                    val id = filter.projectId ?: return@filter true
-                    s.projectId == id
+                    val id = filter.projectId ?: return@mapNotNull null
+                    s.takeIf { it.projectId == id }
                 }
                 ExportScope.CLIENT -> {
                     val client = filter.clientName?.trim()?.lowercase(Locale.getDefault())
-                        ?: return@filter true
-                    repository.sessionClientName(s).trim().lowercase(Locale.getDefault()) == client
+                        ?: return@mapNotNull null
+                    s.takeIf { repository.sessionClientName(it).trim().lowercase(Locale.getDefault()) == client }
                 }
             }
         }.sortedBy { it.start }
@@ -45,14 +47,15 @@ object ExportBuilder {
         val dateFmt = SimpleDateFormat(if (locale.language == "de") "dd.MM.yyyy" else "MM/dd/yyyy", locale)
         val timeFmt = SimpleDateFormat("HH:mm", locale)
         return sessions.map { s ->
-            val mins = ((s.end - s.start) / 60_000).coerceAtLeast(0)
+            val mins = TimeMath.minutes(s.start, s.end)
             ExportRow(
                 session = s,
                 date = dateFmt.format(s.start),
                 project = repository.sessionProjectName(s),
                 client = repository.sessionClientName(s),
                 start = timeFmt.format(s.start),
-                end = timeFmt.format(s.end),
+                end = if (dateFmt.format(s.start) == dateFmt.format(s.end)) timeFmt.format(s.end)
+                    else dateFmt.format(s.end) + " " + timeFmt.format(s.end),
                 pauseMinutes = 0L,
                 workMinutes = mins,
                 hourlyRate = repository.sessionRate(s),
@@ -71,8 +74,7 @@ object ExportBuilder {
     ): ExportSummary {
         val totalMinutes = rows.sumOf { it.workMinutes }
         val totalEarnings = rows.sumOf { it.earnings }
-        val rates = rows.map { it.hourlyRate }.filter { it > 0 }
-        val avgRate = if (rates.isEmpty()) 0.0 else rates.average()
+        val avgRate = if (totalMinutes == 0L) 0.0 else totalEarnings * 60.0 / totalMinutes
 
         val projectLabel = when {
             filter.scope == ExportScope.PROJECT && filter.projectId != null -> {
@@ -176,7 +178,7 @@ object ExportBuilder {
         }
         if (rows.isEmpty()) return "—"
         val first = rows.minOf { it.session.start }
-        val last = rows.maxOf { it.session.start }
+        val last = rows.maxOf { it.session.end }
         return "${dateFmt.format(first)} - ${dateFmt.format(last)}"
     }
 }

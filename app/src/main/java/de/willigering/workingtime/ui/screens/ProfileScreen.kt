@@ -1,6 +1,19 @@
 package de.willigering.workingtime.ui.screens
 
 import android.net.Uri
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import de.willigering.workingtime.util.LogoImages
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -58,32 +71,74 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
     val profile = state.userProfile
     val context = LocalContext.current
 
-    var name by remember(profile.displayName) { mutableStateOf(profile.displayName) }
-    var company by remember(profile.companyName) { mutableStateOf(profile.companyName) }
+    var name by rememberSaveable(profile.displayName) { mutableStateOf(profile.displayName) }
+    var company by rememberSaveable(profile.companyName) { mutableStateOf(profile.companyName) }
     var logoVersion by remember { mutableStateOf(0) }
 
-    val logoBitmap = remember(profile.logoPath, logoVersion) {
-        val path = profile.logoPath
-        if (path.isBlank() || !File(path).exists()) null
-        else try {
-            BitmapFactory.decodeFile(path)?.asImageBitmap()
-        } catch (_: Exception) {
-            null
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    var turns by remember { mutableStateOf(0) }
+    var crop by remember { mutableStateOf(false) }
+
+    val logoBitmap by produceState<ImageBitmap?>(null, profile.logoPath, logoVersion) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                if (profile.logoPath.isBlank()) null
+                else LogoImages.decode(context, Uri.fromFile(File(profile.logoPath)), 384)?.asImageBitmap()
+            } catch (_: Exception) { null } catch (_: OutOfMemoryError) { null }
+        }
+    }
+    val preview by produceState<ImageBitmap?>(null, pendingUri, turns, crop) {
+        value = null
+        value = withContext(Dispatchers.IO) {
+            try { pendingUri?.let { LogoImages.decode(context, it, 512, turns, crop)?.asImageBitmap() } }
+            catch (_: Exception) { null } catch (_: OutOfMemoryError) { null }
         }
     }
 
-    val pickLogo = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-    ) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        val ok = viewModel.setUserLogoFromUri(uri)
-        if (ok) {
-            logoVersion++
-            Toast.makeText(context, R.string.profile_logo_saved, Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, R.string.profile_logo_failed, Toast.LENGTH_SHORT).show()
-        }
+    val pickLogo = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) { pendingUri = uri; turns = 0; crop = false }
     }
+
+    if (pendingUri != null) AlertDialog(
+        onDismissRequest = { if (!busy) pendingUri = null },
+        title = { Text(stringResource(R.string.logo_preview)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.fillMaxWidth().height(160.dp).background(Color.White), contentAlignment = Alignment.Center) {
+                    val image = preview
+                    if (image != null) Image(image, stringResource(R.string.profile_logo_title),
+                        Modifier.fillMaxSize().padding(12.dp), contentScale = ContentScale.Fit)
+                    else Text(stringResource(R.string.logo_loading), color = Color.DarkGray)
+                }
+                TextButton(enabled = !busy, onClick = { turns = (turns + 1) % 4 }) {
+                    Text(stringResource(R.string.logo_rotate))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = crop, enabled = !busy, onCheckedChange = { crop = it })
+                    Text(stringResource(R.string.logo_crop))
+                }
+                Text(stringResource(R.string.logo_white_hint), style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = {
+            Button(enabled = !busy && preview != null, onClick = {
+                val uri = pendingUri ?: return@Button
+                val rotation = turns
+                val cropped = crop
+                busy = true
+                scope.launch {
+                    try {
+                        val ok = viewModel.setUserLogoFromUri(uri, rotation, cropped)
+                        if (ok) { logoVersion++; pendingUri = null }
+                        Toast.makeText(context, if (ok) R.string.profile_logo_saved else R.string.profile_logo_failed, Toast.LENGTH_SHORT).show()
+                    } finally { busy = false }
+                }
+            }) { Text(stringResource(if (busy) R.string.export_working else R.string.save)) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = { pendingUri = null }) { Text(stringResource(R.string.cancel)) } },
+    )
 
     Column(
         modifier = Modifier
@@ -159,7 +214,7 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
                     modifier = Modifier
                         .size(88.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(AppColors.Surface.copy(alpha = 0.8f))
+                        .background(Color.White)
                         .border(1.dp, AppColors.GlassBorder, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -182,6 +237,7 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
                 Column(modifier = Modifier.weight(1f)) {
                     OutlinedButton(
                         onClick = { pickLogo.launch("image/*") },
+                        enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.profile_logo_pick))
@@ -190,10 +246,14 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
                         Spacer(Modifier.height(6.dp))
                         OutlinedButton(
                             onClick = {
-                                viewModel.clearUserLogo()
-                                logoVersion++
+                                busy = true
+                                scope.launch {
+                                    try { viewModel.clearUserLogo(); logoVersion++ }
+                                    finally { busy = false }
+                                }
                             },
                             modifier = Modifier.fillMaxWidth(),
+                            enabled = !busy,
                         ) {
                             Icon(
                                 Icons.Rounded.Delete,
@@ -208,6 +268,19 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
             }
         }
 
+        Spacer(Modifier.height(16.dp))
+        Text(stringResource(R.string.logo_export_preview), style = MaterialTheme.typography.titleSmall)
+        Row(Modifier.fillMaxWidth().background(Color.White).padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                Text(profile.issuerTitle(), color = Color.Black, maxLines = 2)
+                Text(profile.companyName, color = Color.DarkGray, maxLines = 2)
+            }
+            val image = logoBitmap
+            if (image != null) Image(image, stringResource(R.string.profile_logo_title),
+                Modifier.size(width = 100.dp, height = 44.dp), contentScale = ContentScale.Fit)
+        }
         Spacer(Modifier.height(16.dp))
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Text(

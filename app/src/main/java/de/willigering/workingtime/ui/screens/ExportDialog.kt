@@ -67,7 +67,7 @@ fun ExportDialog(
         mutableStateOf(state.projects.firstOrNull()?.id ?: state.selectedProjectId)
     }
     val clients = remember(state.clients, state.projects, state.sessions) {
-        viewModel.uniqueClientNames()
+        viewModel.uniqueClientNames(includeArchived = true)
     }
     var clientName by remember { mutableStateOf(clients.firstOrNull().orEmpty()) }
 
@@ -199,7 +199,7 @@ fun ExportDialog(
                 }
 
                 Text(
-                    stringResource(R.string.export_hint),
+                    stringResource(R.string.export_hint) + "\n" + stringResource(R.string.minute_policy),
                     style = MaterialTheme.typography.bodySmall,
                     color = AppColors.TextMuted,
                 )
@@ -207,7 +207,8 @@ fun ExportDialog(
         },
         confirmButton = {
             Button(
-                enabled = !exporting && state.sessions.isNotEmpty(),
+                enabled = !exporting && state.sessions.isNotEmpty() &&
+                    (scopeFilter != ExportScope.PERIOD || periodFrom <= periodTo),
                 onClick = {
                     if (scopeFilter == ExportScope.PROJECT && projectId == null) {
                         Toast.makeText(context, R.string.export_pick_project, Toast.LENGTH_SHORT).show()

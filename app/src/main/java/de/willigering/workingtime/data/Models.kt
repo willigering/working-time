@@ -5,6 +5,7 @@ import java.util.UUID
 data class Client(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
+    val archived: Boolean = false,
 )
 
 data class Project(
@@ -33,6 +34,7 @@ data class WorkSession(
 data class ActiveSession(
     val start: Long,
     val projectId: String,
+    val notes: String = "",
 )
 
 /** User self-presentation for exports (name, optional company, logo). */
@@ -58,4 +60,5 @@ data class AppState(
     val activeSession: ActiveSession? = null,
     val selectedProjectId: String? = null,
     val userProfile: UserProfile = UserProfile(),
+    val storageError: Boolean = false,
 )

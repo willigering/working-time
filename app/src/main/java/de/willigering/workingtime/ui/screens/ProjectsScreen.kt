@@ -138,7 +138,7 @@ fun ProjectsScreen(viewModel: TimeTrackerViewModel) {
                 }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(state.clients, key = { it.id }) { client ->
+                    items(state.clients.filterNot { it.archived }, key = { it.id }) { client ->
                         val count = state.projects.count {
                             it.clientName.equals(client.name, ignoreCase = true)
                         }
@@ -152,7 +152,7 @@ fun ProjectsScreen(viewModel: TimeTrackerViewModel) {
                             onDelete = { clientPendingDelete = client },
                         )
                     }
-                    if (state.clients.isEmpty()) {
+                    if (state.clients.none { !it.archived }) {
                         item { ClientsEmptyState() }
                     }
                     item { Spacer(Modifier.height(88.dp)) }
@@ -333,7 +333,7 @@ private fun ProjectItem(
             Box {
                 IconButton(
                     onClick = { menuOpen = true },
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Icon(
                         Icons.Rounded.MoreVert,

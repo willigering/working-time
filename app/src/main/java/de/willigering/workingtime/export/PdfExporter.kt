@@ -108,7 +108,8 @@ object PdfExporter {
 
         // Name + company on the left, vertically aligned with logo top
         var textY = headerTop + titlePaint.textSize
-        canvas.drawText(summary.title, MARGIN, textY, titlePaint)
+        val titleWidth = PAGE_W - 2 * MARGIN - if (logo != null) LOGO_MAX_W + 16f else 0f
+        canvas.drawText(ellipsize(summary.title, titlePaint, titleWidth), MARGIN, textY, titlePaint)
         textBottom = textY + 4f
         if (summary.companyName.isNotBlank()) {
             textY = textBottom + bodyPaint.textSize + 4f
@@ -137,10 +138,10 @@ object PdfExporter {
 
         // Meta block
         canvas.drawText("${context.getString(R.string.export_label_project)}:", MARGIN, y, mutedPaint)
-        canvas.drawText(summary.projectLabel, MARGIN + 90f, y, bodyPaint)
+        canvas.drawText(ellipsize(summary.projectLabel, bodyPaint, PAGE_W - 2 * MARGIN - 90f), MARGIN + 90f, y, bodyPaint)
         y += 16f
         canvas.drawText("${context.getString(R.string.export_label_client)}:", MARGIN, y, mutedPaint)
-        canvas.drawText(summary.clientLabel, MARGIN + 90f, y, bodyPaint)
+        canvas.drawText(ellipsize(summary.clientLabel, bodyPaint, PAGE_W - 2 * MARGIN - 90f), MARGIN + 90f, y, bodyPaint)
         y += 16f
         canvas.drawText("${context.getString(R.string.export_label_period)}:", MARGIN, y, mutedPaint)
         canvas.drawText(summary.periodLabel, MARGIN + 90f, y, bodyPaint)
