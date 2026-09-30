@@ -36,7 +36,6 @@ Premium Freelancer-Zeiterfassung für Android – dunkles UI mit animiertem Uhre
 ## APK bauen
 
 ```powershell
-cd "D:\APP DEV GROK\Working-Time"
 .\gradlew assembleRelease
 ```
 
