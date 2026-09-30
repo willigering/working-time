@@ -250,7 +250,7 @@ fun ExportDialog(
                                 ExportShare.shareFile(
                                     context = context,
                                     file = file,
-                                    mimeType = ExportShare.mimeFor(format),
+                                    mimeType = ExportShare.mimeFor(filter.format),
                                     chooserTitle = context.getString(R.string.export_share),
                                 )
                                 onDismiss()
