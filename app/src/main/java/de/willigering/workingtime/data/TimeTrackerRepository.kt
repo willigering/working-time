@@ -38,14 +38,24 @@ class TimeTrackerRepository(context: Context) {
 
     init {
         load()
+        enqueue {
+            val keep = _state.value.userProfile.logoPath
+            val cutoff = System.currentTimeMillis() - 7 * 86_400_000L
+            filesDir.listFiles()?.filter { it.name.startsWith("logo-") && it.extension == "png" &&
+                it.absolutePath != keep && it.lastModified() < cutoff }?.forEach { it.delete() }
+        }
         diskScope.launch {
-            for (write in writes) {
-                try { write() } catch (_: Exception) {
-                    _state.update { it.copy(storageError = true) }
+            try {
+                for (write in writes) {
+                    try { write() } catch (_: Exception) {
+                        _state.update { it.copy(storageError = true) }
+                    }
                 }
-            }
+            } finally { diskScope.cancel() }
         }
     }
+
+    fun close() { writes.close() }
 
     suspend fun awaitWrites() {
         val done = CompletableDeferred<Unit>()
@@ -420,7 +430,7 @@ class TimeTrackerRepository(context: Context) {
     fun setUserLogoFromUri(uri: android.net.Uri, turns: Int = 0, crop: Boolean = false): Boolean {
         val target = File(filesDir, "logo-" + java.util.UUID.randomUUID() + ".png")
         return try {
-            val bitmap = de.willigering.workingtime.util.LogoImages.decode(appContext, uri, 2048, turns, crop)
+            val bitmap = de.willigering.workingtime.util.LogoImages.decode(appContext, uri, 1024, turns, crop)
                 ?: return false
             try {
                 java.io.FileOutputStream(target).use {

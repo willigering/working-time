@@ -23,6 +23,21 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Build both languages and run regression tests
         run: bash gradlew assembleDeDebug assembleEnDebug testDeDebugUnitTest lintDeDebug --stacktrace
+      - name: Summarize regression tests
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          files = glob.glob("app/build/test-results/testDeDebugUnitTest/TEST-*.xml")
+          totals = {key: 0 for key in ("tests", "failures", "errors", "skipped")}
+          for path in files:
+              root = ET.parse(path).getroot()
+              for key in totals:
+                  totals[key] += int(root.attrib.get(key, 0))
+              for failure in root.findall(".//failure"):
+                  print(failure.text)
+          print("Regression results:", totals)
+          PY
       - name: Test and lint reports
         if: always()
         uses: actions/upload-artifact@v4

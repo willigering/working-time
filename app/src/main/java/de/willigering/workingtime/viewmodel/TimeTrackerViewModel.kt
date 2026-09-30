@@ -68,6 +68,11 @@ class TimeTrackerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(0), System.currentTimeMillis())
 
+    override fun onCleared() {
+        repository.close()
+        super.onCleared()
+    }
+
     fun selectProject(projectId: String) = repository.selectProject(projectId)
 
     fun startSession() {

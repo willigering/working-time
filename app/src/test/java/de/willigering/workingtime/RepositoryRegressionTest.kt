@@ -34,7 +34,7 @@ class RepositoryRegressionTest {
     }
 
     private fun flush() = runBlocking { withTimeout(10_000) { repo.awaitWrites() } }
-    @After fun finishWrites() { flush() }
+    @After fun finishWrites() { flush(); repo.close() }
 
     private fun project(): Project {
         repo.addProject("Example", "Client", 30.0, 0xFFFFB300, true)

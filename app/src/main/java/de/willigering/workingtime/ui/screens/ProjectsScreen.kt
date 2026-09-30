@@ -188,6 +188,7 @@ fun ProjectsScreen(viewModel: TimeTrackerViewModel) {
     if (showClientDialog) {
         ClientDialog(
             clientName = editingClient?.name,
+            knownClients = viewModel.uniqueClientNames(includeArchived = true),
             onDismiss = { showClientDialog = false },
             onSave = { name ->
                 val existing = editingClient

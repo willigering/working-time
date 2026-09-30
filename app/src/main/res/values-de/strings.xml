@@ -208,4 +208,5 @@
     <string name="logo_crop">Mittig quadratisch zuschneiden</string>
     <string name="logo_white_hint">Heller Hintergrund wie im PDF. Ein weißes Logo auf transparentem Hintergrund ist hier nicht sichtbar.</string>
     <string name="logo_export_preview">Vorschau des Exportkopfs</string>
+    <string name="duplicate_client">Dieser Kunde existiert bereits.</string>
 </resources>

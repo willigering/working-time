@@ -233,10 +233,13 @@ fun ProjectDialog(
 @Composable
 fun ClientDialog(
     clientName: String?,
+    knownClients: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
 ) {
     var name by remember(clientName) { mutableStateOf(clientName.orEmpty()) }
+    val duplicate = !name.trim().equals(clientName?.trim(), true) &&
+        knownClients.any { it.equals(name.trim(), true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -255,6 +258,8 @@ fun ClientDialog(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text(stringResource(R.string.client_name)) },
+                isError = duplicate,
+                supportingText = { if (duplicate) Text(stringResource(R.string.duplicate_client)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 colors = dialogFieldColors(),
@@ -263,7 +268,7 @@ fun ClientDialog(
         confirmButton = {
             Button(
                 onClick = { if (name.isNotBlank()) onSave(name.trim()) },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank() && !duplicate,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AppColors.Accent,
                     contentColor = AppColors.Background,

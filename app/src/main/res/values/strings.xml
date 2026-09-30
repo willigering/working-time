@@ -208,4 +208,5 @@
     <string name="logo_crop">Crop to a centered square</string>
     <string name="logo_white_hint">Light background as in the PDF. A white logo on a transparent background will be invisible here.</string>
     <string name="logo_export_preview">Export header preview</string>
+    <string name="duplicate_client">This client already exists.</string>
 </resources>
