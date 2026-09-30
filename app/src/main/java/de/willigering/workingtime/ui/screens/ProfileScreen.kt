@@ -45,7 +45,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,7 +67,7 @@ import java.io.File
 
 @Composable
 fun ProfileScreen(viewModel: TimeTrackerViewModel) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val profile = state.userProfile
     val context = LocalContext.current
 
@@ -221,9 +221,10 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
                         .border(1.dp, AppColors.GlassBorder, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (logoBitmap != null) {
+                    val currentLogo = logoBitmap
+                    if (currentLogo != null) {
                         Image(
-                            bitmap = logoBitmap,
+                            bitmap = currentLogo,
                             contentDescription = stringResource(R.string.profile_logo_title),
                             modifier = Modifier.fillMaxSize().padding(6.dp),
                             contentScale = ContentScale.Fit,

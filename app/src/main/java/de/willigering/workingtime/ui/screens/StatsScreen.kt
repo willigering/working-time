@@ -16,7 +16,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import de.willigering.workingtime.data.WorkSession
@@ -44,12 +44,13 @@ private data class ProjectStats(
 )
 
 @Composable
-fun StatsScreen(viewModel: TimeTrackerViewModel) {
-    val state by viewModel.state.collectAsState()
+fun StatsScreen(viewModel: TimeTrackerViewModel, visible: Boolean = true) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val tick by viewModel.tick.collectAsState()
+    val tick = if (visible) viewModel.tick.collectAsStateWithLifecycle().value else System.currentTimeMillis()
     val minute = tick / 60_000
-    val sessions = remember(state.sessions, state.activeSession, state.projects, minute) {
+    val activeMinute = state.activeSession?.let { (tick - it.start).coerceAtLeast(0) / 60_000 }
+    val sessions = remember(state.sessions, state.activeSession, state.projects, minute, activeMinute) {
         val active = state.activeSession
         val project = active?.let { viewModel.projectById(it.projectId) }
         if (active == null) state.sessions else state.sessions + WorkSession(

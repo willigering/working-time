@@ -2,10 +2,18 @@
   RELEASE NOTES / VERSIONSHINWEISE
   App:        Working Time
   Entwickler: Willi Gering
-  Stand:      2026-09-05
+  Stand:      2026-09-30
 ================================================================================
 
-Aktuelle Version: 2.5.9 (Build 34) - 2026-09-06
+Aktuelle Version: 2.6.0 (Build 35) - 2026-09-30
+
+v2.6.0 (Build 35) - 2026-09-30
+- Abrechnungshistorie, Wiederherstellen, Stundensätze und Zeitraumexport korrigiert.
+- Zeiteinträge bearbeiten und nachtragen, Suche und Filter.
+- Kalenderwoche, Zeitumstellung und laufende Statistiken korrigiert.
+- Logo drehen, mittig zuschneiden, mit heller Vorschau importieren.
+- Speicherung und Bildverarbeitung im Hintergrund, lesbarere Oberfläche.
+- Vollständige Änderungen in CHANGELOG.md.
 
 v2.5.9 (Build 34) - 2026-09-06
 - Lösch-Balken zeigt „Wiederherstellen“ und stellt per Tippen wieder her

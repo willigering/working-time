@@ -9,8 +9,7 @@ Premium Freelancer-Zeiterfassung für Android – dunkles UI mit animiertem Uhre
 ### Timer
 - Projekt wählen und Zeit starten/stoppen
 - Live-Timer mit optionaler Notiz
-- Live-Verdienst-Anzeige (bei Stundensatz)
-- Heute / Woche Zusammenfassung
+- Heute / Kalenderwoche / Monat inklusive laufender Sitzung
 
 ### Projekte
 - Projekte anlegen mit Name, Kunde, Stundensatz
@@ -20,18 +19,35 @@ Premium Freelancer-Zeiterfassung für Android – dunkles UI mit animiertem Uhre
 
 ### Verlauf
 - Alle Sessions mit Projekt, Dauer und Verdienst
-- Einträge löschen
-- CSV-Export (Projekt, Kunde, Satz, Verdienst, Notizen)
+- Einträge nachtragen, bearbeiten, löschen und wiederherstellen
+- Suche nach Projekt, Kunde und Notiz; Projekt- und Datumsfilter; Gruppen pro Tag
+- CSV-, XLSX- und PDF-Export; Filter nach Zeitraum, Projekt und Kunde
+- Zeitraumexport enthält nur den überlappenden Teil einer Sitzung
+- Dauer und Verdienst verwenden vollständige Minuten
 
 ### Statistik
 - Stunden & Verdienst: Heute, Woche, Monat
 - Aufschlüsselung nach Projekt (Monat)
 
+### Eigenes Logo
+- Im Profil ein PNG-, JPG- oder WebP-Bild auswählen
+- EXIF-Ausrichtung wird berücksichtigt; vor dem Speichern drehen oder mittig quadratisch zuschneiden
+- Helle Vorschau und Exportkopf-Vorschau; das Logo erscheint in PDF-Exporten
+- Ein fehlgeschlagener Import lässt das vorhandene Logo unverändert
+
 ## Tech-Stack
 
 - Kotlin + Jetpack Compose + Material 3
-- Lokale JSON-Speicherung (keine Cloud)
+- Lokale JSON-Speicherung im Hintergrund mit atomischen Schreibvorgängen (keine Cloud)
 - Migration alter `sessions.json` / `active.txt` Daten
+
+## Prüfen
+
+GitHub Actions baut beide Sprachvarianten und prüft Abrechnung, Rückgängig, Datumsgrenzen, gespeicherte Notizen und Logo-Import. Ein manueller Test auf Android bleibt für Tastatur, große Schrift und Teilen notwendig.
+
+```powershell
+.\gradlew assembleDeDebug assembleEnDebug testDeDebugUnitTest lintDeDebug
+```
 
 ## APK bauen
 

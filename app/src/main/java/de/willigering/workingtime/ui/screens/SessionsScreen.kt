@@ -32,7 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +54,7 @@ import de.willigering.workingtime.viewmodel.TimeTrackerViewModel
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SessionsScreen(viewModel: TimeTrackerViewModel) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var query by rememberSaveable { mutableStateOf("") }
     var projectFilter by rememberSaveable { mutableStateOf<String?>(null) }

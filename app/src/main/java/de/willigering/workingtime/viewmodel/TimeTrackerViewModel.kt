@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -60,17 +61,12 @@ class TimeTrackerViewModel(application: Application) : AndroidViewModel(applicat
         AppState(),
     )
 
-    private val _tick = MutableStateFlow(System.currentTimeMillis())
-    val tick: StateFlow<Long> = _tick.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            while (true) {
-                delay(1_000)
-                _tick.value = System.currentTimeMillis()
-            }
+    val tick: StateFlow<Long> = flow {
+        while (true) {
+            emit(System.currentTimeMillis())
+            delay(1_000)
         }
-    }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(0), System.currentTimeMillis())
 
     fun selectProject(projectId: String) = repository.selectProject(projectId)
 

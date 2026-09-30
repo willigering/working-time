@@ -16,7 +16,7 @@ object AppColors {
     val GlassBorder = Color(0x14FFFFFF)
     val TextPrimary = Color(0xFFF2F2F2)
     val TextSecondary = Color(0xFFB8B8B8)
-    val TextMuted = Color(0xFF7A7A7A)
+    val TextMuted = Color(0xFF939393)
 
     // Crypto brand accents (Support page)
     val CoinBtc = Color(0xFFF7931A)

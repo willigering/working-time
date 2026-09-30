@@ -1,5 +1,21 @@
 # Versionshinweise — Working Time
 
+## v2.6.0 (Build 35) — 2026-09-30
+
+- Historische Stundensätze und Abrechenbarkeit bleiben beim Löschen von Projekten erhalten.
+- Wiederherstellen erhält zwischenzeitliche Änderungen und neue Timerstarts.
+- Stundensätze werden validiert; deutsche und englische Zahlenformate unterstützt.
+- Zeiteinträge nachtragen und bearbeiten; Suche, Projekt- und Datumsfilter sowie Tagesgruppen.
+- Einheitliche Abrechnung aus vollständigen Minuten; Zeitraumexport beschneidet überlappende Einträge.
+- Kalenderwoche ab Montag, Tagesgrenzen mit Zeitumstellung und laufende Zeiten in Statistiken.
+- Notizen laufender Sitzungen werden gespeichert; Kunden aus der Auswahl entfernen, ohne Historie zu löschen.
+- JSON-Dateien im Hintergrund atomisch speichern; beschädigte Dateien nicht überschreiben und Speicherfehler anzeigen.
+- Logo-Import im Hintergrund mit begrenztem Speicherbedarf, EXIF-Ausrichtung, Drehung, mittigem quadratischen Zuschnitt und heller Vorschau.
+- Fehlgeschlagene Logo-Imports erhalten das vorherige Logo; Vorschau des Exportkopfs im Profil.
+- Größere Beschriftungen und Touchflächen, bessere Textkontraste, scrollbarer Timer und umbrechende Farbauswahl.
+- Hintergrundaktualisierungen pausieren, historische Summen zwischenspeichern.
+- Android-Build und Regressionstests über GitHub Actions.
+
 ## v2.5.9 (Build 34) — 2026-09-06
 
 - Lösch-Balken zeigt „Wiederherstellen“ und stellt per Tippen wieder her

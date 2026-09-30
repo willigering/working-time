@@ -24,7 +24,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -62,8 +62,8 @@ private val tabs = listOf(
 fun WorkingTimeApp(viewModel: TimeTrackerViewModel = viewModel()) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
-    val undo by viewModel.undoBanner.collectAsState()
-    val appState by viewModel.state.collectAsState()
+    val undo by viewModel.undoBanner.collectAsStateWithLifecycle()
+    val appState by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -129,11 +129,11 @@ fun WorkingTimeApp(viewModel: TimeTrackerViewModel = viewModel()) {
                 userScrollEnabled = undo == null,
             ) { page ->
                 when (page) {
-                    0 -> TimerScreen(viewModel = viewModel)
+                    0 -> TimerScreen(viewModel = viewModel, visible = pagerState.currentPage == 0)
                     1 -> ProjectsScreen(viewModel)
                     2 -> SessionsScreen(viewModel)
                     3 -> ProfileScreen(viewModel)
-                    4 -> StatsScreen(viewModel)
+                    4 -> StatsScreen(viewModel, visible = pagerState.currentPage == 4)
                 }
             }
             }

@@ -18,6 +18,9 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import de.willigering.workingtime.ui.theme.AppColors
 import kotlinx.coroutines.delay
+import androidx.lifecycle.Lifecycle
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import java.time.LocalTime
 import kotlin.math.PI
 import kotlin.math.cos
@@ -27,13 +30,21 @@ import kotlin.math.sin
 @Composable
 fun AnimatedClock(
     modifier: Modifier = Modifier,
+    active: Boolean = true,
 ) {
     var now by remember { mutableStateOf(LocalTime.now()) }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            now = LocalTime.now()
-            delay(50L)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(active, lifecycleOwner) {
+        if (active) lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) { now = LocalTime.now(); delay(50L) }
+        }
+    }
+    val numberPaint = remember {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.White.copy(alpha = 0.22f).toArgb()
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         }
     }
 
@@ -92,13 +103,7 @@ fun AnimatedClock(
             )
         }
 
-        val numberPaint = Paint().apply {
-            isAntiAlias = true
-            color = Color.White.copy(alpha = 0.22f).toArgb()
-            textAlign = Paint.Align.CENTER
-            textSize = radius * 0.12f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        }
+        numberPaint.textSize = radius * 0.12f
         val native = drawContext.canvas.nativeCanvas
         val numberRadius = radius * 0.68f
         val numbers = listOf(

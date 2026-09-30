@@ -37,7 +37,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,9 +62,10 @@ import de.willigering.workingtime.viewmodel.TimeTrackerViewModel
 @Composable
 fun TimerScreen(
     viewModel: TimeTrackerViewModel,
+    visible: Boolean = true,
 ) {
-    val state by viewModel.state.collectAsState()
-    val tick by viewModel.tick.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val tick = if (visible) viewModel.tick.collectAsStateWithLifecycle().value else System.currentTimeMillis()
     var showCreateProject by remember { mutableStateOf(false) }
 
     val active = state.activeSession
@@ -193,7 +194,7 @@ fun TimerScreen(
                 .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            AnimatedClock(modifier = Modifier.fillMaxSize())
+            AnimatedClock(modifier = Modifier.fillMaxSize(), active = visible)
         }
 
         MiniStatsRow(

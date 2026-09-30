@@ -30,7 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,7 +57,7 @@ private enum class ProjectsPane { Projects, Clients }
 
 @Composable
 fun ProjectsScreen(viewModel: TimeTrackerViewModel) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var pane by remember { mutableStateOf(ProjectsPane.Projects) }
     var showProjectDialog by remember { mutableStateOf(false) }
     var editingProject by remember { mutableStateOf<Project?>(null) }
