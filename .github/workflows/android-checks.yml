@@ -37,6 +37,11 @@ jobs:
               for failure in root.findall(".//failure"):
                   print(failure.text)
           print("Regression results:", totals)
+          for path in glob.glob("app/build/reports/lint-results*.xml"):
+              root = ET.parse(path).getroot()
+              for issue in root.findall("issue"):
+                  if issue.attrib.get("severity") in ("Error", "Fatal"):
+                      print("Lint error:", issue.attrib, [location.attrib for location in issue.findall("location")])
           PY
       - name: Test and lint reports
         if: always()

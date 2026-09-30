@@ -21,7 +21,7 @@ import kotlinx.coroutines.delay
 import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import java.time.LocalTime
+import java.util.Calendar
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
@@ -32,12 +32,12 @@ fun AnimatedClock(
     modifier: Modifier = Modifier,
     active: Boolean = true,
 ) {
-    var now by remember { mutableStateOf(LocalTime.now()) }
+    var now by remember { mutableStateOf(Calendar.getInstance()) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(active, lifecycleOwner) {
         if (active) lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) { now = LocalTime.now(); delay(50L) }
+            while (true) { now = Calendar.getInstance(); delay(50L) }
         }
     }
     val numberPaint = remember {
@@ -121,9 +121,9 @@ fun AnimatedClock(
             native.drawText(label.toString(), nx, baseline, numberPaint)
         }
 
-        val hour = now.hour % 12 + now.minute / 60.0 + now.second / 3600.0 + now.nano / 3_600_000_000_000.0
-        val minute = now.minute + now.second / 60.0 + now.nano / 60_000_000_000.0
-        val second = now.second + now.nano / 1_000_000_000.0
+        val hour = now.get(Calendar.HOUR_OF_DAY) % 12 + now.get(Calendar.MINUTE) / 60.0 + now.get(Calendar.SECOND) / 3600.0 + now.get(Calendar.MILLISECOND) / 3_600_000.0
+        val minute = now.get(Calendar.MINUTE) + now.get(Calendar.SECOND) / 60.0 + now.get(Calendar.MILLISECOND) / 60_000.0
+        val second = now.get(Calendar.SECOND) + now.get(Calendar.MILLISECOND) / 1_000.0
 
         val hourAngle = (hour * 30.0 - 90.0) * PI / 180.0
         val minuteAngle = (minute * 6.0 - 90.0) * PI / 180.0

@@ -14,6 +14,7 @@
 - Fehlgeschlagene Logo-Imports erhalten das vorherige Logo; Vorschau des Exportkopfs im Profil.
 - Größere Beschriftungen und Touchflächen, bessere Textkontraste, scrollbarer Timer und umbrechende Farbauswahl.
 - Hintergrundaktualisierungen pausieren, historische Summen zwischenspeichern.
+- Analoge Uhr verwendet APIs, die auch auf Android 7 (minSdk 24) verfügbar sind.
 - Android-Build und Regressionstests über GitHub Actions.
 
 ## v2.5.9 (Build 34) — 2026-09-06
