@@ -5,7 +5,15 @@
   Stand:      2026-10-01
 ================================================================================
 
-Aktuelle Version: 2.6.1 (Build 36) - 2026-10-01
+Aktuelle Version: 2.6.2 (Build 37) - 2026-10-01
+
+v2.6.2 (Build 37) - 2026-10-01
+- Neues Layout in Dunkelblau und Gold mit den Bereichen Heute, Zeiten, Projekte und Einstellungen.
+- Laufende Zeit als Goldring mit Stop und den Werten von heute. Ohne Timer: vier Kacheln, letzte Zeiten, neuer Eintrag.
+- Tippen auf den Ring öffnet die große Uhr. Dort lässt sich die Notiz der laufenden Zeit eintragen.
+- Zeiten nach Tag, Woche und Monat, mit Wochentagen und Summen.
+- Projektseite mit Stundensatz, Gesamtzeit, Umsatz, Farbe, Archivieren und Löschen.
+- Eintrag bearbeiten als eigene Seite. Export, Profil, Kunden und Unterstützung liegen unter Einstellungen.
 
 v2.6.1 (Build 36) - 2026-10-01
 - Premium-Farbpalette: dunklere Flächen, Gold-Akzent, hellere Lesetexte.

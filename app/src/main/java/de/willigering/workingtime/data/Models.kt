@@ -15,6 +15,7 @@ data class Project(
     val hourlyRate: Double = 0.0,
     val colorArgb: Long = 0xFFFFB300,
     val billable: Boolean = true,
+    val archived: Boolean = false,
 )
 
 data class WorkSession(

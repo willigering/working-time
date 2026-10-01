@@ -558,6 +558,7 @@ class TimeTrackerRepository(context: Context) {
                     hourlyRate = o.optDouble("hourlyRate", 0.0),
                     colorArgb = o.optLong("colorArgb", PROJECT_COLORS[0]),
                     billable = o.optBoolean("billable", true),
+                    archived = o.optBoolean("archived", false),
                 )
             }
         } catch (_: Exception) {
@@ -730,6 +731,7 @@ class TimeTrackerRepository(context: Context) {
                     .put("hourlyRate", p.hourlyRate)
                     .put("colorArgb", p.colorArgb)
                     .put("billable", p.billable)
+                    .put("archived", p.archived)
             )
         }
         return arr

@@ -1,9 +1,8 @@
 package de.willigering.workingtime.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,26 +10,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FolderOff
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Business
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,493 +28,151 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.willigering.workingtime.R
-import de.willigering.workingtime.data.Client
 import de.willigering.workingtime.data.Project
-import de.willigering.workingtime.ui.components.ConfirmDeleteDialog
-import de.willigering.workingtime.ui.components.DeleteProjectDialog
-import de.willigering.workingtime.ui.components.GlassCard
+import de.willigering.workingtime.ui.components.AddIconButton
+import de.willigering.workingtime.ui.components.ProjectMark
+import de.willigering.workingtime.ui.components.ScreenHeading
 import de.willigering.workingtime.ui.theme.AppColors
+import de.willigering.workingtime.util.Formatters
+import de.willigering.workingtime.util.TimeMath
+import de.willigering.workingtime.util.includingRunning
 import de.willigering.workingtime.viewmodel.TimeTrackerViewModel
 
-private enum class ProjectsPane { Projects, Clients }
-
 @Composable
-fun ProjectsScreen(viewModel: TimeTrackerViewModel) {
+fun ProjectsScreen(
+    viewModel: TimeTrackerViewModel,
+    onOpenProject: (String) -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var pane by remember { mutableStateOf(ProjectsPane.Projects) }
-    var showProjectDialog by remember { mutableStateOf(false) }
-    var editingProject by remember { mutableStateOf<Project?>(null) }
-    var projectPendingDelete by remember { mutableStateOf<Project?>(null) }
-    var showClientDialog by remember { mutableStateOf(false) }
-    var editingClient by remember { mutableStateOf<Client?>(null) }
-    var clientPendingDelete by remember { mutableStateOf<Client?>(null) }
+    val tick by viewModel.tick.collectAsStateWithLifecycle()
+    var showCreate by remember { mutableStateOf(false) }
+    var showArchive by remember { mutableStateOf(false) }
+    val active = state.projects.filter { !it.archived }
+    val archived = state.projects.filter { it.archived }
+    val totals = remember(state.sessions, state.activeSession, state.projects, tick / 60_000) {
+        state.includingRunning(tick).groupBy { it.projectId }
+    }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    if (pane == ProjectsPane.Projects) {
-                        editingProject = null
-                        showProjectDialog = true
-                    } else {
-                        editingClient = null
-                        showClientDialog = true
-                    }
-                },
-                containerColor = AppColors.Accent,
-                contentColor = AppColors.Background,
-                shape = RoundedCornerShape(18.dp),
-            ) {
-                Icon(
-                    Icons.Rounded.Add,
-                    contentDescription = if (pane == ProjectsPane.Projects) {
-                        stringResource(R.string.add_project)
-                    } else {
-                        stringResource(R.string.add_client)
-                    },
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
+    ) {
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ScreenHeading(stringResource(R.string.projects_title), modifier = Modifier.weight(1f))
+            AddIconButton(onClick = { showCreate = true }, description = stringResource(R.string.add_project))
+        }
+        Spacer(Modifier.height(14.dp))
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(active, key = { it.id }) { project ->
+                val mine = totals[project.id].orEmpty()
+                ProjectCard(
+                    project = project,
+                    minutes = mine.sumOf { TimeMath.minutes(it.start, it.end) },
+                    earnings = mine.sumOf { viewModel.sessionEarnings(it) },
+                    onClick = { onOpenProject(project.id) },
                 )
+                Spacer(Modifier.height(10.dp))
             }
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 20.dp),
-        ) {
-            Spacer(Modifier.height(16.dp))
-            Text(
-                stringResource(R.string.projects_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = AppColors.TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                stringResource(R.string.projects_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = AppColors.TextMuted,
-            )
-            Spacer(Modifier.height(16.dp))
-            SegmentToggle(
-                selected = pane,
-                onSelect = { pane = it },
-            )
-            Spacer(Modifier.height(16.dp))
-
-            if (pane == ProjectsPane.Projects) {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(state.projects, key = { it.id }) { project ->
-                        ProjectItem(
+            if (active.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.projects_empty_hint),
+                        color = AppColors.TextMuted,
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    )
+                }
+            }
+            if (archived.isNotEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.project_archive_section, archived.size),
+                        color = AppColors.Accent,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .padding(vertical = 8.dp)
+                            .clickable { showArchive = !showArchive },
+                    )
+                }
+                if (showArchive) {
+                    items(archived, key = { "arch-${it.id}" }) { project ->
+                        val mine = totals[project.id].orEmpty()
+                        ProjectCard(
                             project = project,
-                            onEdit = {
-                                editingProject = project
-                                showProjectDialog = true
-                            },
-                            onDelete = { projectPendingDelete = project },
+                            minutes = mine.sumOf { TimeMath.minutes(it.start, it.end) },
+                            earnings = mine.sumOf { viewModel.sessionEarnings(it) },
+                            onClick = { onOpenProject(project.id) },
                         )
+                        Spacer(Modifier.height(10.dp))
                     }
-                    if (state.projects.size <= 1) {
-                        item {
-                            ProjectsEmptyState(hasOne = state.projects.size == 1)
-                        }
-                    }
-                    item { Spacer(Modifier.height(88.dp)) }
-                }
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(state.clients.filterNot { it.archived }, key = { it.id }) { client ->
-                        val count = state.projects.count {
-                            it.clientName.equals(client.name, ignoreCase = true)
-                        }
-                        ClientItem(
-                            client = client,
-                            projectCount = count,
-                            onEdit = {
-                                editingClient = client
-                                showClientDialog = true
-                            },
-                            onDelete = { clientPendingDelete = client },
-                        )
-                    }
-                    if (state.clients.none { !it.archived }) {
-                        item { ClientsEmptyState() }
-                    }
-                    item { Spacer(Modifier.height(88.dp)) }
                 }
             }
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 
-    if (showProjectDialog) {
+    if (showCreate) {
         ProjectDialog(
-            project = editingProject,
+            project = null,
             knownClients = viewModel.uniqueClientNames(),
-            onDismiss = { showProjectDialog = false },
+            onDismiss = { showCreate = false },
             onSave = { name, client, rate, color, billable ->
-                if (editingProject != null) {
-                    viewModel.updateProject(
-                        editingProject!!.copy(
-                            name = name,
-                            clientName = client,
-                            hourlyRate = rate,
-                            colorArgb = color,
-                            billable = billable,
-                        ),
-                    )
-                } else {
-                    viewModel.addProject(name, client, rate, color, billable)
-                }
-                showProjectDialog = false
+                viewModel.addProject(name, client, rate, color, billable)
+                showCreate = false
             },
-        )
-    }
-
-    if (showClientDialog) {
-        ClientDialog(
-            clientName = editingClient?.name,
-            knownClients = viewModel.uniqueClientNames(includeArchived = true),
-            onDismiss = { showClientDialog = false },
-            onSave = { name ->
-                val existing = editingClient
-                if (existing != null) {
-                    viewModel.updateClient(existing.copy(name = name))
-                } else {
-                    viewModel.addClient(name)
-                }
-                showClientDialog = false
-            },
-        )
-    }
-
-    projectPendingDelete?.let { project ->
-        DeleteProjectDialog(
-            projectName = project.name,
-            onConfirm = { deleteSessions ->
-                viewModel.deleteProject(project.id, deleteSessions = deleteSessions)
-                projectPendingDelete = null
-            },
-            onDismiss = { projectPendingDelete = null },
-        )
-    }
-
-    clientPendingDelete?.let { client ->
-        ConfirmDeleteDialog(
-            title = stringResource(R.string.delete_client_title),
-            message = stringResource(R.string.delete_client_message, client.name),
-            onConfirm = {
-                viewModel.deleteClient(client.id)
-                clientPendingDelete = null
-            },
-            onDismiss = { clientPendingDelete = null },
         )
     }
 }
 
 @Composable
-private fun SegmentToggle(
-    selected: ProjectsPane,
-    onSelect: (ProjectsPane) -> Unit,
+private fun ProjectCard(
+    project: Project,
+    minutes: Long,
+    earnings: Double,
+    onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(12.dp)
+    val color = Color(project.colorArgb)
+    val shape = RoundedCornerShape(18.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
             .background(AppColors.Surface)
-            .padding(4.dp),
-    ) {
-        SegmentChip(
-            label = stringResource(R.string.segment_projects),
-            selected = selected == ProjectsPane.Projects,
-            modifier = Modifier.weight(1f),
-            onClick = { onSelect(ProjectsPane.Projects) },
-        )
-        SegmentChip(
-            label = stringResource(R.string.segment_clients),
-            selected = selected == ProjectsPane.Clients,
-            modifier = Modifier.weight(1f),
-            onClick = { onSelect(ProjectsPane.Clients) },
-        )
-    }
-}
-
-@Composable
-private fun SegmentChip(
-    label: String,
-    selected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) AppColors.Anthracite else Color.Transparent)
+            .border(1.dp, AppColors.GlassBorder, shape)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (selected) AppColors.TextPrimary else AppColors.TextMuted,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-        )
-    }
-}
-
-@Composable
-private fun ProjectItem(
-    project: Project,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    val color = Color(project.colorArgb)
-    var menuOpen by remember { mutableStateOf(false) }
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        accentColor = AppColors.Accent,
-        leftAccent = true,
-        padding = 18.dp,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+        ProjectMark(project.name, color)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 12.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(color),
+            Text(
+                project.name,
+                color = AppColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
-            ) {
+            if (project.clientName.isNotBlank()) {
                 Text(
-                    project.name,
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 18.sp),
-                    color = AppColors.TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (project.clientName.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        project.clientName,
-                        color = AppColors.TextMuted,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                if (project.hourlyRate > 0) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        stringResource(R.string.hourly_rate_value, project.hourlyRate),
-                        color = AppColors.TextMuted,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-            Box {
-                IconButton(
-                    onClick = { menuOpen = true },
-                    modifier = Modifier.size(48.dp),
-                ) {
-                    Icon(
-                        Icons.Rounded.MoreVert,
-                        contentDescription = stringResource(R.string.more_actions),
-                        tint = AppColors.TextMuted,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.edit)) },
-                        onClick = {
-                            menuOpen = false
-                            onEdit()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.delete), color = AppColors.Error) },
-                        onClick = {
-                            menuOpen = false
-                            onDelete()
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ClientItem(
-    client: Client,
-    projectCount: Int,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        leftAccent = true,
-        padding = 18.dp,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(AppColors.Anthracite),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.Business,
-                    contentDescription = null,
-                    tint = AppColors.Accent,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
-            ) {
-                Text(
-                    client.name,
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 18.sp),
-                    color = AppColors.TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    if (projectCount == 1) {
-                        stringResource(R.string.client_project_count_one)
-                    } else {
-                        stringResource(R.string.client_project_count, projectCount)
-                    },
+                    project.clientName,
                     color = AppColors.TextMuted,
-                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            Box {
-                IconButton(
-                    onClick = { menuOpen = true },
-                    modifier = Modifier.size(36.dp),
-                ) {
-                    Icon(
-                        Icons.Rounded.MoreVert,
-                        contentDescription = stringResource(R.string.more_actions),
-                        tint = AppColors.TextMuted,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.edit)) },
-                        onClick = {
-                            menuOpen = false
-                            onEdit()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.delete), color = AppColors.Error) },
-                        onClick = {
-                            menuOpen = false
-                            onDelete()
-                        },
-                    )
-                }
-            }
         }
-    }
-}
-
-@Composable
-private fun ProjectsEmptyState(hasOne: Boolean) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 36.dp, bottom = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(AppColors.Surface),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Outlined.FolderOff,
-                contentDescription = null,
-                tint = AppColors.TextMuted,
-                modifier = Modifier.size(28.dp),
-            )
+        Column(horizontalAlignment = Alignment.End) {
+            Text(Formatters.hoursLabel(minutes), color = AppColors.TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+            Text(Formatters.money(earnings), color = color, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            stringResource(
-                if (hasOne) R.string.projects_empty_more_title else R.string.projects_empty_title,
-            ),
-            style = MaterialTheme.typography.titleMedium,
-            color = AppColors.TextPrimary,
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            stringResource(R.string.projects_empty_hint),
-            style = MaterialTheme.typography.bodyMedium,
-            color = AppColors.TextMuted,
-        )
-    }
-}
-
-@Composable
-private fun ClientsEmptyState() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 36.dp, bottom = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(AppColors.Surface),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Rounded.Business,
-                contentDescription = null,
-                tint = AppColors.TextMuted,
-                modifier = Modifier.size(28.dp),
-            )
-        }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.clients_empty_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = AppColors.TextPrimary,
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            stringResource(R.string.clients_empty_hint),
-            style = MaterialTheme.typography.bodyMedium,
-            color = AppColors.TextMuted,
-        )
     }
 }

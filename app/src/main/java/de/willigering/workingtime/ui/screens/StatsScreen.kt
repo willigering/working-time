@@ -225,6 +225,43 @@ private fun StatPeriodCard(label: String, minutes: Long, earnings: Double, accen
 }
 
 @Composable
+fun MonthProjectBreakdown(viewModel: TimeTrackerViewModel, anchor: Long) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val (monthStart, monthEnd) = de.willigering.workingtime.util.Periods.monthBounds(anchor)
+    val projectStats = remember(state.sessions, state.projects, monthStart, monthEnd) {
+        state.sessions
+            .groupBy { it.projectId }
+            .mapNotNull { (_, sessions) ->
+                val minutes = viewModel.totalMinutes(sessions, monthStart, monthEnd)
+                if (minutes <= 0) return@mapNotNull null
+                val sample = sessions.first()
+                ProjectStats(
+                    name = viewModel.sessionProjectName(sample),
+                    colorArgb = viewModel.sessionColor(sample),
+                    minutes = minutes,
+                    earnings = viewModel.totalEarnings(sessions, monthStart, monthEnd),
+                )
+            }
+            .sortedByDescending { it.minutes }
+    }
+    val maxMins = projectStats.maxOfOrNull { it.minutes }?.coerceAtLeast(1) ?: 1L
+    Text(
+        stringResource(R.string.stats_by_project),
+        style = MaterialTheme.typography.titleMedium,
+        color = AppColors.TextPrimary,
+    )
+    Spacer(Modifier.height(10.dp))
+    if (projectStats.isEmpty()) {
+        Text(stringResource(R.string.stats_no_data), color = AppColors.TextMuted)
+    } else {
+        projectStats.forEach { stats ->
+            ProjectStatRow(stats, maxMins)
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
 private fun ProjectStatRow(stats: ProjectStats, maxMins: Long) {
     val context = LocalContext.current
     val color = Color(stats.colorArgb)

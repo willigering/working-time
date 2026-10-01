@@ -1,5 +1,12 @@
 # Versionshinweise — Working Time
 
+## v2.6.2 (Build 37) — 2026-10-01
+- Oberfläche im Layout Dunkelblau/Gold: Heute, Zeiten, Projekte, Einstellungen.
+- Laufender Timer mit Goldring, Stop und Tageswerten. Übersicht mit Woche, letzten Zeiten und neuem Eintrag.
+- Vollbilduhr per Tippen auf den Ring. Zeiten nach Tag, Woche und Monat.
+- Projektdetail mit Satz, Gesamtzeit, Umsatz, Farbe, Archiv und Löschen.
+- Einträge als eigene Seite. Export, Profil, Kunden und Unterstützung unter Einstellungen.
+
 ## v2.6.1 (Build 36) — 2026-10-01
 
 - Premium-Farbpalette: dunklere Flächen, Gold-Akzent, hellere Lesetexte.

@@ -65,8 +65,14 @@ import de.willigering.workingtime.ui.theme.AppColors
 import de.willigering.workingtime.viewmodel.TimeTrackerViewModel
 import java.io.File
 
+enum class ProfilePart { All, Identity, Logo }
+
 @Composable
-fun ProfileScreen(viewModel: TimeTrackerViewModel) {
+fun ProfileScreen(
+    viewModel: TimeTrackerViewModel,
+    part: ProfilePart = ProfilePart.All,
+    embed: Boolean = false,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val profile = state.userProfile
     val context = LocalContext.current
@@ -145,24 +151,26 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
+            .fillMaxWidth()
+            .then(if (embed) Modifier else Modifier.fillMaxSize().verticalScroll(rememberScrollState()))
+            .padding(horizontal = if (embed) 0.dp else 20.dp),
     ) {
-        Spacer(Modifier.height(12.dp))
-        Text(
-            stringResource(R.string.profile_title),
-            style = MaterialTheme.typography.titleLarge,
-            color = AppColors.TextPrimary,
-        )
-        Text(
-            stringResource(R.string.profile_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = AppColors.TextSecondary,
-        )
-        Spacer(Modifier.height(16.dp))
+        if (!embed) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                stringResource(R.string.profile_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = AppColors.TextPrimary,
+            )
+            Text(
+                stringResource(R.string.profile_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppColors.TextSecondary,
+            )
+            Spacer(Modifier.height(16.dp))
+        }
 
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
+        if (part != ProfilePart.Logo) GlassCard(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -192,6 +200,7 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
             }
         }
 
+        if (part != ProfilePart.Identity) {
         Spacer(Modifier.height(16.dp))
 
         GlassCard(modifier = Modifier.fillMaxWidth(), accentColor = AppColors.Accent) {
@@ -299,7 +308,8 @@ fun ProfileScreen(viewModel: TimeTrackerViewModel) {
                 color = AppColors.TextSecondary,
             )
         }
-        Spacer(Modifier.height(80.dp))
+        }
+        Spacer(Modifier.height(if (embed) 12.dp else 80.dp))
     }
 }
 
