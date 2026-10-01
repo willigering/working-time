@@ -103,7 +103,9 @@ fun ProjectsScreen(viewModel: TimeTrackerViewModel) {
             Spacer(Modifier.height(16.dp))
             Text(
                 stringResource(R.string.projects_title),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineMedium,
+                color = AppColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold,
             )
             Text(
                 stringResource(R.string.projects_subtitle),
@@ -118,7 +120,7 @@ fun ProjectsScreen(viewModel: TimeTrackerViewModel) {
             Spacer(Modifier.height(16.dp))
 
             if (pane == ProjectsPane.Projects) {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(state.projects, key = { it.id }) { project ->
                         ProjectItem(
                             project = project,
