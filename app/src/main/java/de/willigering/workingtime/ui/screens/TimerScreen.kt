@@ -27,6 +27,8 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.Paid
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import de.willigering.workingtime.R
 import de.willigering.workingtime.data.AppState
 import de.willigering.workingtime.data.Project
@@ -96,9 +99,17 @@ fun TimerScreen(
     ) {
         Spacer(Modifier.height(12.dp))
         Text(
-            stringResource(R.string.app_name),
+            stringResource(R.string.app_name).uppercase(),
             style = MaterialTheme.typography.titleMedium,
-            color = AppColors.Accent,
+            color = AppColors.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.8.sp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Heute",
+            style = MaterialTheme.typography.headlineMedium,
+            color = AppColors.TextPrimary,
             fontWeight = FontWeight.SemiBold,
         )
         if (active != null) {
@@ -202,6 +213,19 @@ fun TimerScreen(
             }
         }
 
+        val context = LocalContext.current
+        val todayEarnings = viewModel.totalEarnings(state.sessions, todayStart, todayEnd) +
+            if (active != null && activeProject != null && activeProject.billable) {
+                de.willigering.workingtime.util.TimeMath.minutes(
+                    maxOf(active.start, todayStart),
+                    minOf(tick, todayEnd),
+                ) / 60.0 * activeProject.hourlyRate
+            } else 0.0
+        TodayBusinessStats(
+            today = todayMins,
+            earnings = Formatters.currency(context, todayEarnings),
+        )
+        Spacer(Modifier.height(10.dp))
         MiniStatsRow(
             today = todayMins,
             week = weekMins,
@@ -266,6 +290,49 @@ private fun TimeBlock(
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 8.dp)) {
         Text(value, style = digitStyle)
         Text(label, style = labelStyle)
+    }
+}
+
+@Composable
+private fun TodayBusinessStats(today: Long, earnings: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        BusinessStatCard(
+            icon = Icons.Rounded.AccessTime,
+            value = Formatters.compactHours(today),
+            label = "Arbeitszeit",
+            modifier = Modifier.weight(1f),
+        )
+        BusinessStatCard(
+            icon = Icons.Rounded.Paid,
+            value = earnings,
+            label = "Umsatz",
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun BusinessStatCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(AppColors.Surface)
+            .border(1.dp, AppColors.GlassBorder, shape)
+            .padding(16.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = AppColors.Accent, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(12.dp))
+        Text(value, style = MaterialTheme.typography.titleLarge, color = AppColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = AppColors.TextMuted)
     }
 }
 
