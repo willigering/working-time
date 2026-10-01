@@ -1,5 +1,12 @@
 # Versionshinweise — Working Time
 
+## v2.6.1 (Build 36) — 2026-10-01
+
+- Premium-Farbpalette: dunklere Flächen, Gold-Akzent, hellere Lesetexte.
+- Analog-Uhr größer und hinter der Laufzeit im Timer-Hintergrund.
+- Uhr zurückhaltender gezeichnet, damit die erfasste Zeit im Vordergrund bleibt.
+- Release-Build erzeugt zusätzlich versionierte APK-Dateinamen.
+
 ## v2.6.0 (Build 35) — 2026-09-30
 
 - Historische Stundensätze und Abrechenbarkeit bleiben beim Löschen von Projekten erhalten.

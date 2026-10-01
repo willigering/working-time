@@ -2,10 +2,15 @@
   RELEASE NOTES / VERSIONSHINWEISE
   App:        Working Time
   Entwickler: Willi Gering
-  Stand:      2026-09-30
+  Stand:      2026-10-01
 ================================================================================
 
-Aktuelle Version: 2.6.0 (Build 35) - 2026-09-30
+Aktuelle Version: 2.6.1 (Build 36) - 2026-10-01
+
+v2.6.1 (Build 36) - 2026-10-01
+- Premium-Farbpalette: dunklere Flächen, Gold-Akzent, hellere Lesetexte.
+- Analog-Uhr größer und hinter der Laufzeit im Timer-Hintergrund.
+- Uhr zurückhaltender gezeichnet, damit die erfasste Zeit im Vordergrund bleibt.
 
 v2.6.0 (Build 35) - 2026-09-30
 - Abrechnungshistorie, Wiederherstellen, Stundensätze und Zeitraumexport korrigiert.

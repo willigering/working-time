@@ -7,8 +7,8 @@ package de.willigering.workingtime.core
  * real [DONATE_PAYPAL_URL] is ready.
  */
 object AppInfo {
-    const val VERSION = "2.6.0"
-    const val BUILD_NUMBER = "35"
+    const val VERSION = "2.6.1"
+    const val BUILD_NUMBER = "36"
     const val DEVELOPER = "Willi Gering"
 
     // Crypto wallets (Support the Project)
