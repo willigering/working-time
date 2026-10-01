@@ -111,9 +111,24 @@ fun TimerScreen(
         }
         Spacer(Modifier.height(10.dp))
 
-        HeroTimer(elapsed = elapsed)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(280.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            // The clock stays deliberately in the background: present and premium,
+            // while the tracked duration remains the primary information.
+            AnimatedClock(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp),
+                active = visible,
+            )
+            HeroTimer(elapsed = elapsed)
+        }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         ProjectSelector(
             state = state,
@@ -187,16 +202,6 @@ fun TimerScreen(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .height(160.dp)
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            AnimatedClock(modifier = Modifier.fillMaxSize(), active = visible)
-        }
-
         MiniStatsRow(
             today = todayMins,
             week = weekMins,
@@ -224,6 +229,8 @@ private fun HeroTimer(elapsed: Long) {
     val digitStyle = MaterialTheme.typography.headlineLarge.copy(
         color = AppColors.TextPrimary,
         fontWeight = FontWeight.Light,
+        fontSize = 46.sp,
+        letterSpacing = 0.5.sp,
     )
     val labelStyle = MaterialTheme.typography.labelMedium.copy(
         color = AppColors.TextMuted,
