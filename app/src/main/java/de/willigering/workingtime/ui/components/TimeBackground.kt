@@ -42,7 +42,7 @@ fun AnimatedClock(
     }
     val numberPaint = remember {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.White.copy(alpha = 0.22f).toArgb()
+            color = Color.White.copy(alpha = 0.10f).toArgb()
             textAlign = Paint.Align.CENTER
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         }
@@ -56,17 +56,17 @@ fun AnimatedClock(
         val radius = min(w, h) * 0.38f
 
         drawCircle(
-            color = AppColors.Accent.copy(alpha = 0.03f),
+            color = AppColors.Accent.copy(alpha = 0.055f),
             radius = radius * 1.10f,
             center = Offset(cx, cy),
         )
         drawCircle(
-            color = AppColors.Surface.copy(alpha = 0.55f),
+            color = AppColors.Surface.copy(alpha = 0.24f),
             radius = radius,
             center = Offset(cx, cy),
         )
         drawCircle(
-            color = Color.White.copy(alpha = 0.08f),
+            color = AppColors.Accent.copy(alpha = 0.22f),
             radius = radius,
             center = Offset(cx, cy),
             style = Stroke(width = 1.4f),
@@ -88,9 +88,9 @@ fun AnimatedClock(
             val y2 = cy + outer * sin(angle).toFloat()
             drawLine(
                 color = when {
-                    isCardinal -> Color.White.copy(alpha = 0.32f)
-                    isHour -> Color.White.copy(alpha = 0.18f)
-                    else -> Color.White.copy(alpha = 0.07f)
+                    isCardinal -> AppColors.Accent.copy(alpha = 0.42f)
+                    isHour -> Color.White.copy(alpha = 0.14f)
+                    else -> Color.White.copy(alpha = 0.045f)
                 },
                 start = Offset(x1, y1),
                 end = Offset(x2, y2),
@@ -130,7 +130,7 @@ fun AnimatedClock(
         val secondAngle = (second * 6.0 - 90.0) * PI / 180.0
 
         drawLine(
-            color = Color(0xFFFFD08A).copy(alpha = 0.85f),
+            color = AppColors.Accent.copy(alpha = 0.32f),
             start = Offset(cx, cy),
             end = Offset(
                 cx + radius * 0.48f * cos(hourAngle).toFloat(),
@@ -140,7 +140,7 @@ fun AnimatedClock(
             cap = StrokeCap.Round,
         )
         drawLine(
-            color = Color.White.copy(alpha = 0.72f),
+            color = Color.White.copy(alpha = 0.24f),
             start = Offset(cx, cy),
             end = Offset(
                 cx + radius * 0.66f * cos(minuteAngle).toFloat(),
@@ -150,7 +150,7 @@ fun AnimatedClock(
             cap = StrokeCap.Round,
         )
         drawLine(
-            color = AppColors.Accent.copy(alpha = 0.80f),
+            color = AppColors.Accent.copy(alpha = 0.50f),
             start = Offset(cx, cy),
             end = Offset(
                 cx + radius * 0.76f * cos(secondAngle).toFloat(),
