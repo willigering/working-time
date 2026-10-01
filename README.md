@@ -56,3 +56,15 @@ GitHub Actions baut beide Sprachvarianten und prüft Abrechnung, Rückgängig, D
 ```
 
 APK: `app\build\outputs\apk\de\release\app-de-release.apk`
+
+## Automatische APK-Dateinamen
+
+Standard für Release-APKs: `Appname-Version+Buildnummer[-Variante].apk`.
+Bei `./gradlew assembleRelease` (Windows: `gradlew.bat assembleRelease`)
+entstehen zusätzlich `Working-Time-<versionName>+<versionCode>-de.apk`
+und `Working-Time-<versionName>+<versionCode>-en.apk` unter
+`app/build/outputs/versioned-apk/`. Die Version stammt automatisch aus
+`app/build.gradle.kts`. Einzelne Sprachvarianten können weiterhin über
+`assembleDeRelease` oder `assembleEnRelease` gebaut werden.
+Prozessorarchitektur und ein vorhandener `-unsigned`-Hinweis bleiben im Namen erhalten.
+Die ursprünglichen APKs und die Signierung bleiben unverändert.

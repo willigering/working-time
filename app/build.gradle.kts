@@ -98,3 +98,26 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
+
+// Keep Android's standard APKs and add versioned copies for each language.
+val versionedApkPrefix = "Working-Time-${android.defaultConfig.versionName}+${android.defaultConfig.versionCode}"
+android.productFlavors.configureEach {
+    val flavor = name
+    val variant = "${flavor}Release"
+    val capitalizedVariant = variant.replaceFirstChar { it.uppercaseChar() }
+    val copyVersionedApk = tasks.register<Copy>("copyVersioned${capitalizedVariant}Apk") {
+        dependsOn("package$capitalizedVariant")
+        from(layout.buildDirectory.dir("outputs/apk/$flavor/release")) {
+            include("app-*.apk")
+            rename { name ->
+                val suffix = name.removePrefix("app-$flavor").removeSuffix(".apk")
+                    .replace("-release", "")
+                "$versionedApkPrefix-$flavor$suffix.apk"
+            }
+        }
+        into(layout.buildDirectory.dir("outputs/versioned-apk"))
+    }
+    tasks.matching { it.name == "assemble$capitalizedVariant" }.configureEach {
+        dependsOn(copyVersionedApk)
+    }
+}
