@@ -12,11 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -50,11 +49,10 @@ import kotlinx.coroutines.launch
 private data class Tab(val labelRes: Int, val icon: ImageVector)
 
 private val tabs = listOf(
-    Tab(R.string.tab_timer, Icons.Rounded.Timer),
-    Tab(R.string.tab_projects, Icons.Rounded.Folder),
+    Tab(R.string.tab_timer, Icons.Rounded.Home),
     Tab(R.string.tab_sessions, Icons.Rounded.History),
-    Tab(R.string.tab_profile, Icons.Rounded.Person),
-    Tab(R.string.tab_stats, Icons.Rounded.BarChart),
+    Tab(R.string.tab_projects, Icons.Rounded.Folder),
+    Tab(R.string.tab_profile, Icons.Rounded.Settings),
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -130,10 +128,9 @@ fun WorkingTimeApp(viewModel: TimeTrackerViewModel = viewModel()) {
             ) { page ->
                 when (page) {
                     0 -> TimerScreen(viewModel = viewModel, visible = pagerState.currentPage == 0)
-                    1 -> ProjectsScreen(viewModel)
-                    2 -> SessionsScreen(viewModel)
+                    1 -> SessionsScreen(viewModel)
+                    2 -> ProjectsScreen(viewModel)
                     3 -> ProfileScreen(viewModel)
-                    4 -> StatsScreen(viewModel, visible = pagerState.currentPage == 4)
                 }
             }
             }
